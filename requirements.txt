@@ -21,8 +21,11 @@ nbformat==5.10.4
 packaging==26.0
 platformdirs==4.9.4
 pluggy==1.6.0
+bcrypt==4.2.1
 psycopg2-binary==2.9.11
 pydantic==2.12.5
+PyJWT==2.10.1
+python-multipart==0.0.20
 pydantic_core==2.41.5
 Pygments==2.20.0
 pytest==9.0.2

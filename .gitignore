@@ -2,3 +2,9 @@
 __pycache__/
 .idea/
 *.sqlite3
+.claude/
+CLAUDE.md
+student_work.ipynb
+test_grader.ipynb
+generate_test.py
+docs/
