@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_current_teacher
 from app.grader.checker import grade_task
 from app.grader.executor import run_code_in_sandbox
 from app.grader.parser import parse_notebook_bytes
-from app.models.api import BatchSubmissionResponse, SubmissionBriefResult
-from app.models.domain import Submission, Task, TaskResult
+from app.models.api import BatchSubmissionResponse, SubmissionBriefResult, SubmissionResponse
+from app.models.domain import Assignment, Submission, Task, TaskResult, Teacher
 from app.models.schemas import TaskConfig
 
 router = APIRouter(tags=["submissions"])
@@ -125,3 +126,80 @@ async def create_submissions(
         failed=len(files) - success_count,
         results=results,
     )
+
+
+@router.get(
+    "/assignments/{assignment_id}/submissions",
+    response_model=list[SubmissionResponse],
+)
+def list_submissions(
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_teacher: Teacher = Depends(get_current_teacher),
+):
+    assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
+        .first()
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    return (
+        db.query(Submission)
+        .filter(Submission.assignment_id == assignment_id)
+        .order_by(Submission.student_fio)
+        .all()
+    )
+
+
+@router.delete("/submissions/{submission_id}", status_code=204)
+def delete_submission(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current_teacher: Teacher = Depends(get_current_teacher),
+):
+    submission = (
+        db.query(Submission)
+        .join(Assignment)
+        .filter(
+            Submission.id == submission_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
+        .first()
+    )
+    if submission is None:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    db.delete(submission)
+    db.commit()
+
+
+@router.delete("/assignments/{assignment_id}/submissions", status_code=204)
+def delete_all_submissions(
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_teacher: Teacher = Depends(get_current_teacher),
+):
+    assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
+        .first()
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    submissions = (
+        db.query(Submission)
+        .filter(Submission.assignment_id == assignment_id)
+        .all()
+    )
+    for sub in submissions:
+        db.delete(sub)
+    db.commit()

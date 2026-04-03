@@ -30,6 +30,37 @@ async function loadAssignment() {
     renderTasks(data.tasks);
 }
 
+async function loadSubmissions() {
+    const res = await fetchWithAuth(`/api/v1/assignments/${assignmentId}/submissions`);
+    if (!res.ok) return;
+
+    const submissions = await res.json();
+    const tbody = document.getElementById("submissions-body");
+    const noMsg = document.getElementById("no-submissions");
+    tbody.innerHTML = "";
+
+    if (submissions.length === 0) {
+        noMsg.classList.remove("d-none");
+        return;
+    }
+
+    noMsg.classList.add("d-none");
+    submissions.forEach((s) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${s.student_fio}</td>
+            <td>${s.student_group}</td>
+            <td>${s.total_score}</td>
+            <td><span class="badge bg-info">Проверено</span></td>
+            <td>
+                <button class="btn btn-outline-danger btn-sm delete-submission-btn"
+                        data-id="${s.id}">&#128465;</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
 function renderTasks(tasks) {
     const tbody = document.getElementById("tasks-body");
     const noMsg = document.getElementById("no-tasks");
@@ -338,12 +369,9 @@ document.getElementById("template-file").addEventListener("change", async (e) =>
 
 document.getElementById("upload-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const resultBox = document.getElementById("upload-result");
     const spinner = document.getElementById("upload-spinner");
     const spinnerText = document.getElementById("upload-spinner-text");
     const submitBtn = document.getElementById("upload-btn");
-
-    resultBox.classList.add("d-none");
 
     const fileInput = document.getElementById("ipynbFiles");
     const fileCount = fileInput.files.length;
@@ -353,7 +381,6 @@ document.getElementById("upload-form").addEventListener("submit", async (e) => {
         formData.append("files", f);
     }
 
-    // Show spinner, disable button
     spinnerText.textContent = `Проверка работ (${fileCount})...`;
     spinner.classList.remove("d-none");
     submitBtn.disabled = true;
@@ -367,47 +394,63 @@ document.getElementById("upload-form").addEventListener("submit", async (e) => {
     } catch (err) {
         spinner.classList.add("d-none");
         submitBtn.disabled = false;
-        resultBox.classList.remove("d-none");
-        resultBox.className = "mt-3 alert alert-danger";
-        resultBox.textContent = "Сетевая ошибка: " + err.message;
+        alert("Сетевая ошибка: " + err.message);
         return;
     }
 
     spinner.classList.add("d-none");
     submitBtn.disabled = false;
 
-    const data = await res.json();
-    resultBox.classList.remove("d-none");
-
     if (!res.ok) {
-        resultBox.className = "mt-3 alert alert-danger";
-        resultBox.textContent = data.detail || "Ошибка загрузки";
+        const data = await res.json();
+        alert(data.detail || "Ошибка загрузки");
         return;
     }
 
-    const rows = data.results.map((r) => {
-        const badge = r.status === "graded"
-            ? `<span class="badge bg-info">Проверено</span>`
-            : `<span class="badge bg-danger" title="${r.error || ""}">ошибка</span>`;
-        return `<tr>
-            <td>${r.student_fio || "-"}</td>
-            <td>${r.student_group || "-"}</td>
-            <td>${r.total_score}</td>
-            <td>${badge}</td>
-        </tr>`;
-    }).join("");
+    const data = await res.json();
+    if (data.failed) {
+        alert(`Проверено: ${data.success} из ${data.total}. Ошибки: ${data.failed}`);
+    }
 
-    resultBox.className = "mt-3 alert alert-info p-2";
-    resultBox.innerHTML = `
-        <p class="mb-2">
-            Проверено работ: <strong>${data.success}</strong> из <strong>${data.total}</strong>
-            ${data.failed ? ` | <span class="text-danger">Ошибки: ${data.failed}</span>` : ""}
-        </p>
-        <table class="table table-sm table-bordered mb-0">
-            <thead><tr><th>ФИО</th><th>Группа</th><th>Балл</th><th>Статус</th></tr></thead>
-            <tbody>${rows}</tbody>
-        </table>
-    `;
+    fileInput.value = "";
+    await loadSubmissions();
+});
+
+// Delete single submission
+document.getElementById("submissions-body").addEventListener("click", async (e) => {
+    const delBtn = e.target.closest(".delete-submission-btn");
+    if (!delBtn) return;
+
+    if (!confirm("Удалить работу этого студента?")) return;
+
+    const res = await fetchWithAuth(`/api/v1/submissions/${delBtn.dataset.id}`, {
+        method: "DELETE",
+    });
+
+    if (!res.ok) {
+        const data = await res.json();
+        alert(data.detail || "Ошибка удаления");
+        return;
+    }
+
+    await loadSubmissions();
+});
+
+// Clear all submissions
+document.getElementById("clear-all-submissions").addEventListener("click", async () => {
+    if (!confirm("Вы уверены? Будут удалены все загруженные работы и оценки для этого задания!")) return;
+
+    const res = await fetchWithAuth(`/api/v1/assignments/${assignmentId}/submissions`, {
+        method: "DELETE",
+    });
+
+    if (!res.ok) {
+        const data = await res.json();
+        alert(data.detail || "Ошибка удаления");
+        return;
+    }
+
+    await loadSubmissions();
 });
 
 document.getElementById("download-report").addEventListener("click", async () => {
@@ -432,3 +475,4 @@ document.getElementById("logout-btn").addEventListener("click", () => {
 });
 
 loadAssignment();
+loadSubmissions();
