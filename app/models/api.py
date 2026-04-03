@@ -61,3 +61,18 @@ class SubmissionResponse(BaseModel):
     student_group: str
     status: str
     total_score: int
+
+
+class SubmissionBriefResult(BaseModel):
+    student_fio: str
+    student_group: str
+    status: str
+    total_score: int
+    error: str | None = None
+
+
+class BatchSubmissionResponse(BaseModel):
+    total: int
+    success: int
+    failed: int
+    results: list[SubmissionBriefResult]

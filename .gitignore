@@ -4,7 +4,8 @@ __pycache__/
 *.sqlite3
 .claude/
 CLAUDE.md
-student_work.ipynb
-test_grader.ipynb
+ipynb files/student_work.ipynb
+ipynb files/test_grader.ipynb
 generate_test.py
 docs/
+ipynb files/

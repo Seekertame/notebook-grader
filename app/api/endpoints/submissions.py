@@ -5,32 +5,16 @@ from app.core.database import get_db
 from app.grader.checker import grade_task
 from app.grader.executor import run_code_in_sandbox
 from app.grader.parser import parse_notebook_bytes
-from app.models.api import SubmissionResponse
+from app.models.api import BatchSubmissionResponse, SubmissionBriefResult
 from app.models.domain import Submission, Task, TaskResult
 from app.models.schemas import TaskConfig
 
 router = APIRouter(tags=["submissions"])
 
 
-@router.post(
-    "/assignments/{assignment_id}/submissions",
-    response_model=SubmissionResponse,
-)
-async def create_submission(
-    assignment_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
-    content = await file.read()
+def _grade_one(content: bytes, db_tasks: list[Task]) -> tuple[str, str, int, list]:
+    """Parse and grade a single notebook. Returns (fio, group, total_score, grading_results)."""
     parsed = parse_notebook_bytes(content)
-
-    db_tasks = db.query(Task).filter(Task.assignment_id == assignment_id).all()
-    if not db_tasks:
-        raise HTTPException(
-            status_code=404,
-            detail="Assignment not found or has no tasks",
-        )
-
     code_map = {cell.task_code: cell.source for cell in parsed.tasks}
 
     total_score = 0
@@ -60,26 +44,84 @@ async def create_submission(
         )
 
     student = parsed.student
-    submission = Submission(
-        assignment_id=assignment_id,
-        student_fio=student.fio if student else "",
-        student_group=student.group if student else "",
-        status="graded",
-        total_score=total_score,
-    )
-    db.add(submission)
-    db.flush()
+    fio = student.fio if student else ""
+    group = student.group if student else ""
 
-    for db_task, points, status, explanation in grading_results:
-        task_result = TaskResult(
-            submission_id=submission.id,
-            task_id=db_task.id,
-            status=status,
-            awarded_points=points,
-            explanation=explanation,
+    return fio, group, total_score, grading_results
+
+
+@router.post(
+    "/assignments/{assignment_id}/submissions",
+    response_model=BatchSubmissionResponse,
+)
+async def create_submissions(
+    assignment_id: int,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
+    db_tasks = db.query(Task).filter(Task.assignment_id == assignment_id).all()
+    if not db_tasks:
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found or has no tasks",
         )
-        db.add(task_result)
+
+    results: list[SubmissionBriefResult] = []
+    success_count = 0
+
+    for file in files:
+        content = await file.read()
+
+        try:
+            fio, group, total_score, grading_results = _grade_one(content, db_tasks)
+        except Exception as exc:
+            results.append(
+                SubmissionBriefResult(
+                    student_fio=file.filename or "",
+                    student_group="",
+                    status="error",
+                    total_score=0,
+                    error=str(exc),
+                )
+            )
+            continue
+
+        submission = Submission(
+            assignment_id=assignment_id,
+            student_fio=fio,
+            student_group=group,
+            status="graded",
+            total_score=total_score,
+        )
+        db.add(submission)
+        db.flush()
+
+        for db_task, points, status, explanation in grading_results:
+            db.add(
+                TaskResult(
+                    submission_id=submission.id,
+                    task_id=db_task.id,
+                    status=status,
+                    awarded_points=points,
+                    explanation=explanation,
+                )
+            )
+
+        success_count += 1
+        results.append(
+            SubmissionBriefResult(
+                student_fio=fio,
+                student_group=group,
+                status="graded",
+                total_score=total_score,
+            )
+        )
 
     db.commit()
-    db.refresh(submission)
-    return submission
+
+    return BatchSubmissionResponse(
+        total=len(files),
+        success=success_count,
+        failed=len(files) - success_count,
+        results=results,
+    )

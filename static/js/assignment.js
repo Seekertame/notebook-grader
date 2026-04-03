@@ -238,16 +238,42 @@ document.getElementById("tasks-body").addEventListener("click", async (e) => {
 document.getElementById("upload-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const resultBox = document.getElementById("upload-result");
+    const spinner = document.getElementById("upload-spinner");
+    const spinnerText = document.getElementById("upload-spinner-text");
+    const submitBtn = document.getElementById("upload-btn");
+
     resultBox.classList.add("d-none");
 
-    const fileInput = document.getElementById("ipynbFile");
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
+    const fileInput = document.getElementById("ipynbFiles");
+    const fileCount = fileInput.files.length;
 
-    const res = await fetchWithAuth(`/api/v1/assignments/${assignmentId}/submissions`, {
-        method: "POST",
-        body: formData,
-    });
+    const formData = new FormData();
+    for (const f of fileInput.files) {
+        formData.append("files", f);
+    }
+
+    // Show spinner, disable button
+    spinnerText.textContent = `Проверка работ (${fileCount})...`;
+    spinner.classList.remove("d-none");
+    submitBtn.disabled = true;
+
+    let res;
+    try {
+        res = await fetchWithAuth(`/api/v1/assignments/${assignmentId}/submissions`, {
+            method: "POST",
+            body: formData,
+        });
+    } catch (err) {
+        spinner.classList.add("d-none");
+        submitBtn.disabled = false;
+        resultBox.classList.remove("d-none");
+        resultBox.className = "mt-3 alert alert-danger";
+        resultBox.textContent = "Сетевая ошибка: " + err.message;
+        return;
+    }
+
+    spinner.classList.add("d-none");
+    submitBtn.disabled = false;
 
     const data = await res.json();
     resultBox.classList.remove("d-none");
@@ -258,10 +284,28 @@ document.getElementById("upload-form").addEventListener("submit", async (e) => {
         return;
     }
 
-    resultBox.className = "mt-3 alert alert-info";
+    const rows = data.results.map((r) => {
+        const badge = r.status === "graded"
+            ? `<span class="badge bg-success">OK</span>`
+            : `<span class="badge bg-danger" title="${r.error || ""}">ошибка</span>`;
+        return `<tr>
+            <td>${r.student_fio || "-"}</td>
+            <td>${r.student_group || "-"}</td>
+            <td>${r.total_score}</td>
+            <td>${badge}</td>
+        </tr>`;
+    }).join("");
+
+    resultBox.className = "mt-3 alert alert-info p-2";
     resultBox.innerHTML = `
-        <strong>${data.student_fio}</strong> (${data.student_group})<br>
-        Статус: ${data.status} | Итого: <strong>${data.total_score}</strong> баллов
+        <p class="mb-2">
+            Проверено работ: <strong>${data.success}</strong> из <strong>${data.total}</strong>
+            ${data.failed ? ` | <span class="text-danger">Ошибки: ${data.failed}</span>` : ""}
+        </p>
+        <table class="table table-sm table-bordered mb-0">
+            <thead><tr><th>ФИО</th><th>Группа</th><th>Балл</th><th>Статус</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
     `;
 });
 
