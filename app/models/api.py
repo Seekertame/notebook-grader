@@ -53,6 +53,11 @@ class AssignmentResponse(BaseModel):
     tasks: list[TaskResponse] = []
 
 
+class TemplateUploadResponse(BaseModel):
+    filename: str | None
+    tasks_created: int
+
+
 class SubmissionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

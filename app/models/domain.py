@@ -23,10 +23,12 @@ class Assignment(Base):
     title = Column(String(100), nullable=False)
     course_name = Column(String(100), nullable=True)
     group_name = Column(String(50), nullable=True)
+    template_filename = Column(String, nullable=True)
+    template_content = Column(JSON, nullable=True)
 
     teacher = relationship("Teacher", back_populates="assignments")
-    tasks = relationship("Task", back_populates="assignment")
-    submissions = relationship("Submission", back_populates="assignment")
+    tasks = relationship("Task", back_populates="assignment", cascade="all, delete-orphan")
+    submissions = relationship("Submission", back_populates="assignment", cascade="all, delete-orphan")
 
 
 class Task(Base):
@@ -42,7 +44,7 @@ class Task(Base):
     test_cases = Column(JSON, nullable=True)
 
     assignment = relationship("Assignment", back_populates="tasks")
-    task_results = relationship("TaskResult", back_populates="task")
+    task_results = relationship("TaskResult", back_populates="task", cascade="all, delete-orphan")
 
 
 class Submission(Base):
@@ -56,7 +58,7 @@ class Submission(Base):
     total_score = Column(Integer, nullable=False, default=0)
 
     assignment = relationship("Assignment", back_populates="submissions")
-    task_results = relationship("TaskResult", back_populates="submission")
+    task_results = relationship("TaskResult", back_populates="submission", cascade="all, delete-orphan")
 
 
 class TaskResult(Base):

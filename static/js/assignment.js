@@ -77,8 +77,57 @@ function toggleCheckTypeFields() {
     testsField.classList.toggle("d-none", val !== "tests");
 }
 
-checkTypeSelect.addEventListener("change", toggleCheckTypeFields);
+checkTypeSelect.addEventListener("change", () => {
+    toggleCheckTypeFields();
+    if (checkTypeSelect.value === "tests") {
+        const container = document.getElementById("test-cases-container");
+        if (container.children.length === 0) {
+            createTestCaseRow(container);
+        }
+    }
+});
 toggleCheckTypeFields();
+
+function createTestCaseRow(container, inputData = "", expectedOutput = "") {
+    const row = document.createElement("div");
+    row.className = "row g-2 mb-2 test-case-row";
+    row.innerHTML = `
+        <div class="col-5">
+            <textarea class="form-control form-control-sm tc-input" rows="2"
+                      placeholder="Входные данные">${inputData}</textarea>
+        </div>
+        <div class="col-5">
+            <textarea class="form-control form-control-sm tc-output" rows="2"
+                      placeholder="Ожидаемый вывод">${expectedOutput}</textarea>
+        </div>
+        <div class="col-2 d-flex align-items-start">
+            <button type="button" class="btn btn-outline-danger btn-sm tc-remove">&times;</button>
+        </div>
+    `;
+    row.querySelector(".tc-remove").addEventListener("click", () => row.remove());
+    container.appendChild(row);
+}
+
+function collectTestCases(container) {
+    const rows = container.querySelectorAll(".test-case-row");
+    const cases = [];
+    rows.forEach((row) => {
+        const input_data = row.querySelector(".tc-input").value;
+        const expected_output = row.querySelector(".tc-output").value;
+        if (input_data || expected_output) {
+            cases.push({ input_data, expected_output });
+        }
+    });
+    return cases.length ? cases : null;
+}
+
+document.getElementById("add-test-case-btn").addEventListener("click", () => {
+    createTestCaseRow(document.getElementById("test-cases-container"));
+});
+
+document.getElementById("edit-add-test-case-btn").addEventListener("click", () => {
+    createTestCaseRow(document.getElementById("edit-test-cases-container"));
+});
 
 document.getElementById("add-task-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -97,16 +146,9 @@ document.getElementById("add-task-form").addEventListener("submit", async (e) =>
         const ans = form.expected_answer.value.trim();
         if (ans) body.expected_answer = ans;
     } else if (body.check_type === "tests") {
-        const raw = form.test_cases.value.trim();
-        if (raw) {
-            try {
-                body.test_cases = JSON.parse(raw);
-            } catch {
-                errBox.textContent = "Невалидный JSON в тест-кейсах";
-                errBox.classList.remove("d-none");
-                return;
-            }
-        }
+        body.test_cases = collectTestCases(
+            document.getElementById("test-cases-container")
+        );
     }
 
     const res = await fetchWithAuth(`/api/v1/assignments/${assignmentId}/tasks`, {
@@ -123,6 +165,7 @@ document.getElementById("add-task-form").addEventListener("submit", async (e) =>
     }
 
     form.reset();
+    document.getElementById("test-cases-container").innerHTML = "";
     toggleCheckTypeFields();
     bootstrap.Modal.getInstance(document.getElementById("add-task-modal")).hide();
     await loadAssignment();
@@ -139,7 +182,15 @@ function toggleEditCheckTypeFields() {
     editTestsField.classList.toggle("d-none", val !== "tests");
 }
 
-editCheckTypeSelect.addEventListener("change", toggleEditCheckTypeFields);
+editCheckTypeSelect.addEventListener("change", () => {
+    toggleEditCheckTypeFields();
+    if (editCheckTypeSelect.value === "tests") {
+        const container = document.getElementById("edit-test-cases-container");
+        if (container.children.length === 0) {
+            createTestCaseRow(container);
+        }
+    }
+});
 
 // Open edit task modal
 document.getElementById("tasks-body").addEventListener("click", (e) => {
@@ -152,8 +203,25 @@ document.getElementById("tasks-body").addEventListener("click", (e) => {
         form.max_score.value = editBtn.dataset.max_score;
         form.check_type.value = editBtn.dataset.check_type;
         form.expected_answer.value = editBtn.dataset.expected_answer || "";
-        form.test_cases.value = editBtn.dataset.test_cases || "";
         document.getElementById("edit-task-error").classList.add("d-none");
+
+        const editContainer = document.getElementById("edit-test-cases-container");
+        editContainer.innerHTML = "";
+        if (editBtn.dataset.check_type === "tests") {
+            const raw = editBtn.dataset.test_cases;
+            let cases = [];
+            if (raw) {
+                try { cases = JSON.parse(raw); } catch {}
+            }
+            if (cases.length) {
+                cases.forEach((tc) =>
+                    createTestCaseRow(editContainer, tc.input_data || "", tc.expected_output || "")
+                );
+            } else {
+                createTestCaseRow(editContainer);
+            }
+        }
+
         toggleEditCheckTypeFields();
         new bootstrap.Modal(document.getElementById("edit-task-modal")).show();
     }
@@ -179,18 +247,9 @@ document.getElementById("edit-task-form").addEventListener("submit", async (e) =
         body.test_cases = null;
     } else if (body.check_type === "tests") {
         body.expected_answer = null;
-        const raw = form.test_cases.value.trim();
-        if (raw) {
-            try {
-                body.test_cases = JSON.parse(raw);
-            } catch {
-                errBox.textContent = "Невалидный JSON в тест-кейсах";
-                errBox.classList.remove("d-none");
-                return;
-            }
-        } else {
-            body.test_cases = null;
-        }
+        body.test_cases = collectTestCases(
+            document.getElementById("edit-test-cases-container")
+        );
     }
 
     const res = await fetchWithAuth(
@@ -218,7 +277,7 @@ document.getElementById("tasks-body").addEventListener("click", async (e) => {
     const delBtn = e.target.closest(".delete-task-btn");
     if (!delBtn) return;
 
-    if (!confirm("Удалить задачу?")) return;
+    if (!confirm("Вы уверены, что хотите удалить эту задачу? Оценки студентов за эту задачу будут аннулированы, а итоговые баллы пересчитаны!")) return;
 
     const taskId = delBtn.dataset.id;
     const res = await fetchWithAuth(
@@ -233,6 +292,48 @@ document.getElementById("tasks-body").addEventListener("click", async (e) => {
     }
 
     await loadAssignment();
+});
+
+// Template upload
+document.getElementById("template-file").addEventListener("change", async (e) => {
+    const fileInput = e.target;
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const label = document.getElementById("template-upload-label");
+    const labelText = document.getElementById("template-label-text");
+    const spinner = document.getElementById("template-spinner");
+
+    labelText.classList.add("d-none");
+    spinner.classList.remove("d-none");
+    fileInput.disabled = true;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const res = await fetchWithAuth(`/api/v1/assignments/${assignmentId}/template`, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            alert(data.detail || "Ошибка загрузки шаблона");
+            return;
+        }
+
+        const data = await res.json();
+        alert(`Шаблон загружен. Создано задач: ${data.tasks_created}`);
+        await loadAssignment();
+    } catch (err) {
+        alert("Сетевая ошибка: " + err.message);
+    } finally {
+        labelText.classList.remove("d-none");
+        spinner.classList.add("d-none");
+        fileInput.disabled = false;
+        fileInput.value = "";
+    }
 });
 
 document.getElementById("upload-form").addEventListener("submit", async (e) => {
@@ -286,7 +387,7 @@ document.getElementById("upload-form").addEventListener("submit", async (e) => {
 
     const rows = data.results.map((r) => {
         const badge = r.status === "graded"
-            ? `<span class="badge bg-success">OK</span>`
+            ? `<span class="badge bg-info">Проверено</span>`
             : `<span class="badge bg-danger" title="${r.error || ""}">ошибка</span>`;
         return `<tr>
             <td>${r.student_fio || "-"}</td>

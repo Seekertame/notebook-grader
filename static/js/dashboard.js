@@ -132,7 +132,7 @@ document.getElementById("assignments-body").addEventListener("click", async (e) 
     const delBtn = e.target.closest(".delete-assignment-btn");
     if (!delBtn) return;
 
-    if (!confirm("Удалить задание?")) return;
+    if (!confirm("Вы уверены, что хотите удалить это задание? Все связанные задачи, загруженные работы студентов и их оценки будут безвозвратно удалены!")) return;
 
     const id = delBtn.dataset.id;
     const res = await fetchWithAuth(`/api/v1/assignments/${id}`, { method: "DELETE" });

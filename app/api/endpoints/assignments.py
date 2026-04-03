@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+import nbformat
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 
@@ -12,6 +13,7 @@ from app.models.api import (
     TaskCreate,
     TaskResponse,
     TaskUpdate,
+    TemplateUploadResponse,
 )
 from app.models.domain import Assignment, Submission, Task, TaskResult, Teacher
 from app.models.schemas import StudentInfo, StudentWorkResult, TaskGradingResult
@@ -110,21 +112,73 @@ def delete_assignment(
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
 
-    has_submissions = (
-        db.query(Submission)
-        .filter(Submission.assignment_id == assignment_id)
-        .first()
-        is not None
-    )
-    if has_submissions:
-        raise HTTPException(
-            status_code=409,
-            detail="Нельзя удалить задание, для которого уже загружены работы студентов",
-        )
-
-    db.query(Task).filter(Task.assignment_id == assignment_id).delete()
     db.delete(assignment)
     db.commit()
+
+
+@router.post("/{assignment_id}/template", response_model=TemplateUploadResponse)
+def upload_template(
+    assignment_id: int,
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    current_teacher: Teacher = Depends(get_current_teacher),
+):
+    assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
+        .first()
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    try:
+        nb = nbformat.read(file.file, as_version=4)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Невозможно прочитать файл как Jupyter Notebook",
+        )
+
+    assignment.template_filename = file.filename
+    assignment.template_content = nb
+
+    existing_codes = {
+        t.task_code
+        for t in db.query(Task.task_code)
+        .filter(Task.assignment_id == assignment_id)
+        .all()
+    }
+
+    task_codes: list[str] = []
+    for cell in nb.get("cells", []):
+        tags = cell.get("metadata", {}).get("tags", [])
+        for tag in tags:
+            if isinstance(tag, str) and tag.startswith("task:"):
+                code = tag[len("task:"):]
+                if code and code not in existing_codes and code not in task_codes:
+                    task_codes.append(code)
+
+    for code in task_codes:
+        db.add(
+            Task(
+                assignment_id=assignment_id,
+                task_code=code,
+                title=f"Задача {code}",
+                max_score=10,
+                check_type="answer",
+                expected_answer=None,
+            )
+        )
+
+    db.commit()
+
+    return TemplateUploadResponse(
+        filename=file.filename,
+        tasks_created=len(task_codes),
+    )
 
 
 @router.post("/{assignment_id}/tasks", response_model=TaskResponse)
@@ -192,19 +246,18 @@ def delete_task(
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    has_results = (
-        db.query(TaskResult)
-        .filter(TaskResult.task_id == task_id)
-        .first()
-        is not None
-    )
-    if has_results:
-        raise HTTPException(
-            status_code=409,
-            detail="Нельзя удалить задачу, для которой уже есть результаты проверки",
-        )
-
     db.delete(task)
+    db.flush()
+
+    submissions = (
+        db.query(Submission)
+        .filter(Submission.assignment_id == assignment_id)
+        .options(joinedload(Submission.task_results))
+        .all()
+    )
+    for sub in submissions:
+        sub.total_score = sum(tr.awarded_points for tr in sub.task_results)
+
     db.commit()
 
 
