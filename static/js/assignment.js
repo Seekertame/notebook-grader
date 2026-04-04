@@ -61,10 +61,13 @@ async function loadSubmissions() {
     });
 }
 
+const tasksCache = new Map();
+
 function renderTasks(tasks) {
     const tbody = document.getElementById("tasks-body");
     const noMsg = document.getElementById("no-tasks");
     tbody.innerHTML = "";
+    tasksCache.clear();
 
     if (tasks.length === 0) {
         noMsg.classList.remove("d-none");
@@ -73,8 +76,8 @@ function renderTasks(tasks) {
 
     noMsg.classList.add("d-none");
     tasks.forEach((t) => {
+        tasksCache.set(String(t.id), t);
         const tr = document.createElement("tr");
-        const tcJson = t.test_cases ? JSON.stringify(t.test_cases) : "";
         tr.innerHTML = `
             <td>${t.task_code}</td>
             <td>${t.title}</td>
@@ -82,13 +85,7 @@ function renderTasks(tasks) {
             <td><span class="badge bg-secondary">${t.check_type}</span></td>
             <td>
                 <button class="btn btn-outline-primary btn-sm me-1 edit-task-btn"
-                        data-id="${t.id}"
-                        data-task_code="${t.task_code}"
-                        data-title="${t.title}"
-                        data-max_score="${t.max_score}"
-                        data-check_type="${t.check_type}"
-                        data-expected_answer="${t.expected_answer || ""}"
-                        data-test_cases='${tcJson}'>&#9998;</button>
+                        data-id="${t.id}">&#9998;</button>
                 <button class="btn btn-outline-danger btn-sm delete-task-btn"
                         data-id="${t.id}">&#10005;</button>
             </td>
@@ -101,11 +98,13 @@ function renderTasks(tasks) {
 const checkTypeSelect = document.getElementById("check-type-select");
 const answerField = document.getElementById("answer-field");
 const testsField = document.getElementById("tests-field");
+const referenceCodeField = document.getElementById("reference-code-field");
 
 function toggleCheckTypeFields() {
     const val = checkTypeSelect.value;
     answerField.classList.toggle("d-none", val !== "answer");
     testsField.classList.toggle("d-none", val !== "tests");
+    referenceCodeField.classList.toggle("d-none", val !== "reference_assert");
 }
 
 checkTypeSelect.addEventListener("change", () => {
@@ -180,6 +179,9 @@ document.getElementById("add-task-form").addEventListener("submit", async (e) =>
         body.test_cases = collectTestCases(
             document.getElementById("test-cases-container")
         );
+    } else if (body.check_type === "reference_assert") {
+        const code = form.reference_code.value;
+        if (code) body.reference_code = code;
     }
 
     const res = await fetchWithAuth(`/api/v1/assignments/${assignmentId}/tasks`, {
@@ -206,11 +208,13 @@ document.getElementById("add-task-form").addEventListener("submit", async (e) =>
 const editCheckTypeSelect = document.getElementById("edit-check-type-select");
 const editAnswerField = document.getElementById("edit-answer-field");
 const editTestsField = document.getElementById("edit-tests-field");
+const editReferenceCodeField = document.getElementById("edit-reference-code-field");
 
 function toggleEditCheckTypeFields() {
     const val = editCheckTypeSelect.value;
     editAnswerField.classList.toggle("d-none", val !== "answer");
     editTestsField.classList.toggle("d-none", val !== "tests");
+    editReferenceCodeField.classList.toggle("d-none", val !== "reference_assert");
 }
 
 editCheckTypeSelect.addEventListener("change", () => {
@@ -227,23 +231,23 @@ editCheckTypeSelect.addEventListener("change", () => {
 document.getElementById("tasks-body").addEventListener("click", (e) => {
     const editBtn = e.target.closest(".edit-task-btn");
     if (editBtn) {
+        const t = tasksCache.get(editBtn.dataset.id);
+        if (!t) return;
+
         const form = document.getElementById("edit-task-form");
-        form.task_id.value = editBtn.dataset.id;
-        form.task_code.value = editBtn.dataset.task_code;
-        form.title.value = editBtn.dataset.title;
-        form.max_score.value = editBtn.dataset.max_score;
-        form.check_type.value = editBtn.dataset.check_type;
-        form.expected_answer.value = editBtn.dataset.expected_answer || "";
+        form.task_id.value = t.id;
+        form.task_code.value = t.task_code;
+        form.title.value = t.title;
+        form.max_score.value = t.max_score;
+        form.check_type.value = t.check_type;
+        form.expected_answer.value = t.expected_answer || "";
+        form.reference_code.value = t.reference_code || "";
         document.getElementById("edit-task-error").classList.add("d-none");
 
         const editContainer = document.getElementById("edit-test-cases-container");
         editContainer.innerHTML = "";
-        if (editBtn.dataset.check_type === "tests") {
-            const raw = editBtn.dataset.test_cases;
-            let cases = [];
-            if (raw) {
-                try { cases = JSON.parse(raw); } catch {}
-            }
+        if (t.check_type === "tests") {
+            const cases = t.test_cases || [];
             if (cases.length) {
                 cases.forEach((tc) =>
                     createTestCaseRow(editContainer, tc.input_data || "", tc.expected_output || "")
@@ -276,11 +280,17 @@ document.getElementById("edit-task-form").addEventListener("submit", async (e) =
     if (body.check_type === "answer") {
         body.expected_answer = form.expected_answer.value.trim() || null;
         body.test_cases = null;
+        body.reference_code = null;
     } else if (body.check_type === "tests") {
         body.expected_answer = null;
         body.test_cases = collectTestCases(
             document.getElementById("edit-test-cases-container")
         );
+        body.reference_code = null;
+    } else if (body.check_type === "reference_assert") {
+        body.expected_answer = null;
+        body.test_cases = null;
+        body.reference_code = form.reference_code.value || null;
     }
 
     const res = await fetchWithAuth(

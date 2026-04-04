@@ -20,6 +20,7 @@ class TaskCreate(BaseModel):
     check_type: str
     expected_answer: str | None = None
     test_cases: list[dict] | None = None
+    reference_code: str | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -29,6 +30,7 @@ class TaskUpdate(BaseModel):
     check_type: str | None = None
     expected_answer: str | None = None
     test_cases: list[dict] | None = None
+    reference_code: str | None = None
 
 
 class TaskResponse(BaseModel):
@@ -41,6 +43,7 @@ class TaskResponse(BaseModel):
     check_type: str
     expected_answer: str | None = None
     test_cases: list[dict] | None = None
+    reference_code: str | None = None
 
 
 class AssignmentResponse(BaseModel):

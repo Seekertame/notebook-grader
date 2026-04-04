@@ -200,6 +200,7 @@ def create_task(
         check_type=data.check_type,
         expected_answer=data.expected_answer,
         test_cases=data.test_cases,
+        reference_code=data.reference_code,
     )
     db.add(task)
     db.commit()

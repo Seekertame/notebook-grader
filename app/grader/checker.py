@@ -123,6 +123,33 @@ def _grade_by_tests(
     )
 
 
+def _grade_by_reference_assert(
+    code: str,
+    config: TaskConfig,
+    executor_func: Callable[[str], ExecutionResult],
+) -> TaskGradingResult:
+    if not config.reference_code:
+        return TaskGradingResult(
+            task_code=config.task_code,
+            awarded_points=0,
+            status="не настроен проверочный код",
+        )
+
+    final_code = code + "\n\n" + config.reference_code
+    result = executor_func(final_code)
+
+    failure = _execution_failed(result)
+    if failure is not None:
+        failure.task_code = config.task_code
+        return failure
+
+    return TaskGradingResult(
+        task_code=config.task_code,
+        awarded_points=config.max_score,
+        status="успешно",
+    )
+
+
 def grade_task(
     code: str,
     config: TaskConfig,
@@ -130,4 +157,6 @@ def grade_task(
 ) -> TaskGradingResult:
     if config.check_type == CheckType.ANSWER:
         return _grade_by_answer(code, config, executor_func)
+    if config.check_type == CheckType.REFERENCE_ASSERT:
+        return _grade_by_reference_assert(code, config, executor_func)
     return _grade_by_tests(code, config, executor_func)

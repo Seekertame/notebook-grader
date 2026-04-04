@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Enum, ForeignKey, Integer, JSON, String
+from sqlalchemy import Column, Enum, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -39,9 +39,10 @@ class Task(Base):
     task_code = Column(String(50), nullable=False)
     title = Column(String(100), nullable=False)
     max_score = Column(Integer, nullable=False)
-    check_type = Column(Enum("answer", "tests", name="check_type_enum"), nullable=False)
+    check_type = Column(Enum("answer", "tests", "reference_assert", name="check_type_enum"), nullable=False)
     expected_answer = Column(String, nullable=True)
     test_cases = Column(JSON, nullable=True)
+    reference_code = Column(Text, nullable=True)
 
     assignment = relationship("Assignment", back_populates="tasks")
     task_results = relationship("TaskResult", back_populates="task", cascade="all, delete-orphan")

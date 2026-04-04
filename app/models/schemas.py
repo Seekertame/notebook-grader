@@ -35,6 +35,7 @@ class ExecutionResult(BaseModel):
 class CheckType(str, Enum):
     ANSWER = "answer"
     TESTS = "tests"
+    REFERENCE_ASSERT = "reference_assert"
 
 
 class TestCase(BaseModel):
@@ -48,6 +49,7 @@ class TaskConfig(BaseModel):
     check_type: CheckType
     expected_answer: str | None = None
     test_cases: list[TestCase] | None = None
+    reference_code: str | None = None
 
 
 class TaskGradingResult(BaseModel):

@@ -36,6 +36,7 @@ def _grade_one(content: bytes, db_tasks: list[Task]) -> tuple[str, str, int, lis
             check_type=db_task.check_type,
             expected_answer=db_task.expected_answer,
             test_cases=db_task.test_cases,
+            reference_code=db_task.reference_code,
         )
         result = grade_task(source, config, run_code_in_sandbox)
 

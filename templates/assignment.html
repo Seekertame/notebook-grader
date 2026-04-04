@@ -159,6 +159,7 @@
                             <select name="check_type" class="form-select" id="check-type-select" required>
                                 <option value="answer">answer</option>
                                 <option value="tests">tests</option>
+                                <option value="reference_assert">Код из эталона (Assert)</option>
                             </select>
                         </div>
                         <div class="mb-3 d-none" id="answer-field">
@@ -171,6 +172,11 @@
                             <div id="test-cases-container"></div>
                             <button type="button" class="btn btn-outline-primary btn-sm mt-2"
                                     id="add-test-case-btn">+ Добавить тест</button>
+                        </div>
+                        <div class="mb-3 d-none" id="reference-code-field">
+                            <label class="form-label">Проверочный Python-код</label>
+                            <textarea name="reference_code" class="form-control" rows="5"
+                                      placeholder="assert result == 42, 'Ожидалось 42'"></textarea>
                         </div>
                         <div id="task-error" class="alert alert-danger d-none"></div>
                     </div>
@@ -214,6 +220,7 @@
                                     id="edit-check-type-select" required>
                                 <option value="answer">answer</option>
                                 <option value="tests">tests</option>
+                                <option value="reference_assert">Код из эталона (Assert)</option>
                             </select>
                         </div>
                         <div class="mb-3 d-none" id="edit-answer-field">
@@ -225,6 +232,11 @@
                             <div id="edit-test-cases-container"></div>
                             <button type="button" class="btn btn-outline-primary btn-sm mt-2"
                                     id="edit-add-test-case-btn">+ Добавить тест</button>
+                        </div>
+                        <div class="mb-3 d-none" id="edit-reference-code-field">
+                            <label class="form-label">Проверочный Python-код</label>
+                            <textarea name="reference_code" class="form-control" rows="5"
+                                      placeholder="assert result == 42, 'Ожидалось 42'"></textarea>
                         </div>
                         <div id="edit-task-error" class="alert alert-danger d-none"></div>
                     </div>
@@ -239,6 +251,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/assignment.js?v=8" defer></script>
+    <script src="/static/js/assignment.js?v=9" defer></script>
 </body>
 </html>
