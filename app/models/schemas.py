@@ -17,6 +17,7 @@ class TaskCell(BaseModel):
 class ParsedNotebook(BaseModel):
     student: StudentInfo | None
     tasks: list[TaskCell]
+    setup_code: str = ""
 
 
 class ExecutionStatus(str, Enum):

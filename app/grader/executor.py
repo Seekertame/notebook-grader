@@ -1,9 +1,12 @@
+import logging
 import time
 
 import docker
 from docker.errors import ContainerError, APIError
 
 from app.models.schemas import ExecutionResult, ExecutionStatus
+
+logger = logging.getLogger(__name__)
 
 SANDBOX_IMAGE = "notebook-grader-sandbox"
 TIMEOUT_SECONDS = 5
@@ -32,6 +35,9 @@ def run_code_in_sandbox(code: str) -> ExecutionResult:
         exit_code = result.get("StatusCode", -1)
         status = ExecutionStatus.SUCCESS if exit_code == 0 else ExecutionStatus.ERROR
 
+        if status == ExecutionStatus.ERROR:
+            logger.error("Sandbox process failed (exit code %d):\n%s", exit_code, stderr)
+
         return ExecutionResult(
             stdout=stdout,
             stderr=stderr,
@@ -45,6 +51,8 @@ def run_code_in_sandbox(code: str) -> ExecutionResult:
 
         stdout = container.logs(stdout=True, stderr=False).decode()
         stderr = container.logs(stdout=False, stderr=True).decode()
+
+        logger.error("Sandbox timeout (%.1fs):\n%s", elapsed, stderr)
 
         return ExecutionResult(
             stdout=stdout,

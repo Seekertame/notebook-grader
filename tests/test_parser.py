@@ -161,3 +161,56 @@ def test_extra_spaces_around_colon(tmp_path: Path):
     result = parse_notebook(path)
     assert result.student.fio == "Иванов Иван"
     assert result.student.group == "БПИ-101"
+
+
+def test_setup_code_single_cell(tmp_path: Path):
+    """A single cell tagged 'setup' is extracted into setup_code."""
+    nb = nbformat.v4.new_notebook()
+
+    setup = nbformat.v4.new_code_cell("import numpy as np\nimport pandas as pd")
+    setup.metadata["tags"] = ["setup"]
+    nb.cells.append(setup)
+
+    task = nbformat.v4.new_code_cell("print(np.pi)")
+    task.metadata["tags"] = ["task:A1"]
+    nb.cells.append(task)
+
+    path = tmp_path / "with_setup.ipynb"
+    nbformat.write(nb, str(path))
+
+    result = parse_notebook(path)
+    assert "import numpy as np" in result.setup_code
+    assert "import pandas as pd" in result.setup_code
+    assert len(result.tasks) == 1
+
+
+def test_setup_code_multiple_cells(tmp_path: Path):
+    """Multiple setup cells are concatenated."""
+    nb = nbformat.v4.new_notebook()
+
+    s1 = nbformat.v4.new_code_cell("import os")
+    s1.metadata["tags"] = ["setup"]
+    nb.cells.append(s1)
+
+    s2 = nbformat.v4.new_code_cell("import sys")
+    s2.metadata["tags"] = ["setup"]
+    nb.cells.append(s2)
+
+    path = tmp_path / "multi_setup.ipynb"
+    nbformat.write(nb, str(path))
+
+    result = parse_notebook(path)
+    assert "import os" in result.setup_code
+    assert "import sys" in result.setup_code
+
+
+def test_setup_code_absent(tmp_path: Path):
+    """No setup tag means setup_code is empty."""
+    nb = nbformat.v4.new_notebook()
+    nb.cells.append(nbformat.v4.new_code_cell("x = 1"))
+
+    path = tmp_path / "no_setup.ipynb"
+    nbformat.write(nb, str(path))
+
+    result = parse_notebook(path)
+    assert result.setup_code == ""

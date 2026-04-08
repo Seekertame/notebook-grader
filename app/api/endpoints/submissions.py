@@ -17,6 +17,7 @@ def _grade_one(content: bytes, db_tasks: list[Task]) -> tuple[str, str, int, lis
     """Parse and grade a single notebook. Returns (fio, group, total_score, grading_results)."""
     parsed = parse_notebook_bytes(content)
     code_map = {cell.task_code: cell.source for cell in parsed.tasks}
+    setup_code = parsed.setup_code
 
     total_score = 0
     grading_results = []
@@ -38,7 +39,7 @@ def _grade_one(content: bytes, db_tasks: list[Task]) -> tuple[str, str, int, lis
             test_cases=db_task.test_cases,
             reference_code=db_task.reference_code,
         )
-        result = grade_task(source, config, run_code_in_sandbox)
+        result = grade_task(source, config, run_code_in_sandbox, setup_code=setup_code)
 
         total_score += result.awarded_points
         grading_results.append(

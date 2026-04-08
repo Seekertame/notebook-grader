@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 
 from app.models.schemas import (
@@ -7,6 +8,10 @@ from app.models.schemas import (
     TaskConfig,
     TaskGradingResult,
 )
+
+logger = logging.getLogger(__name__)
+
+MAX_EXPLANATION_CHARS = 300
 
 
 def wrap_code_with_stdin(code: str, input_data: str) -> str:
@@ -27,20 +32,31 @@ def _values_match(actual: str, expected: str) -> bool:
         return actual == expected
 
 
+def _truncate_stderr(stderr: str) -> str:
+    text = stderr.strip()
+    if len(text) > MAX_EXPLANATION_CHARS:
+        return "…" + text[-MAX_EXPLANATION_CHARS:]
+    return text
+
+
 def _execution_failed(result: ExecutionResult) -> TaskGradingResult | None:
     if result.status == ExecutionStatus.TIMEOUT:
+        explanation = _truncate_stderr(result.stderr) or "Превышено время выполнения"
+        logger.error("Task execution timed out. stderr:\n%s", result.stderr)
         return TaskGradingResult(
             task_code="",
             awarded_points=0,
             status="тайм-аут",
-            explanation=result.stderr or "Превышено время выполнения",
+            explanation=explanation,
         )
     if result.status == ExecutionStatus.ERROR:
+        explanation = _truncate_stderr(result.stderr)
+        logger.error("Task execution error. stderr:\n%s", result.stderr)
         return TaskGradingResult(
             task_code="",
             awarded_points=0,
             status="ошибка выполнения",
-            explanation=result.stderr,
+            explanation=explanation,
         )
     return None
 
@@ -150,13 +166,28 @@ def _grade_by_reference_assert(
     )
 
 
+_SYSTEM_SETUP = "def display(*args, **kwargs): print(*args)\n\n"
+
+
+def _prepend_setup(setup_code: str, code: str) -> str:
+    # Marker comment so traceback line numbers are easier to interpret
+    parts = [_SYSTEM_SETUP]
+    if setup_code:
+        parts.append(setup_code)
+    parts.append("# --- student code below ---")
+    parts.append(code)
+    return "\n".join(parts)
+
+
 def grade_task(
     code: str,
     config: TaskConfig,
     executor_func: Callable[[str], ExecutionResult],
+    setup_code: str = "",
 ) -> TaskGradingResult:
+    full_code = _prepend_setup(setup_code, code)
     if config.check_type == CheckType.ANSWER:
-        return _grade_by_answer(code, config, executor_func)
+        return _grade_by_answer(full_code, config, executor_func)
     if config.check_type == CheckType.REFERENCE_ASSERT:
-        return _grade_by_reference_assert(code, config, executor_func)
-    return _grade_by_tests(code, config, executor_func)
+        return _grade_by_reference_assert(full_code, config, executor_func)
+    return _grade_by_tests(full_code, config, executor_func)

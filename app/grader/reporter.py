@@ -37,7 +37,10 @@ def generate_csv_report(results: list[StudentWorkResult]) -> bytes:
             if tr:
                 row.append(str(tr.awarded_points))
                 if tr.status != "успешно":
-                    statuses.append(f"{code}: {tr.status}")
+                    detail = f"{code}: {tr.status}"
+                    if tr.explanation:
+                        detail += f" ({tr.explanation})"
+                    statuses.append(detail)
             else:
                 row.append("0")
                 statuses.append(f"{code}: не найдена")

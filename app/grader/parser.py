@@ -55,6 +55,17 @@ def _extract_student_info(nb: nbformat.NotebookNode) -> StudentInfo | None:
     return None
 
 
+def _extract_setup_code(nb: nbformat.NotebookNode) -> str:
+    parts: list[str] = []
+    for cell in nb.cells:
+        if cell.cell_type != "code":
+            continue
+        tags: list[str] = cell.metadata.get("tags", [])
+        if "setup" in tags:
+            parts.append(_normalize_source(cell))
+    return "\n".join(parts)
+
+
 def _extract_tasks(nb: nbformat.NotebookNode) -> list[TaskCell]:
     tasks: list[TaskCell] = []
     for cell in nb.cells:
@@ -71,8 +82,9 @@ def _extract_tasks(nb: nbformat.NotebookNode) -> list[TaskCell]:
 def parse_notebook(path: str | Path) -> ParsedNotebook:
     nb = nbformat.read(str(path), as_version=4)
     student = _extract_student_info(nb)
+    setup_code = _extract_setup_code(nb)
     tasks = _extract_tasks(nb)
-    return ParsedNotebook(student=student, tasks=tasks)
+    return ParsedNotebook(student=student, tasks=tasks, setup_code=setup_code)
 
 
 def parse_notebook_bytes(data: bytes) -> ParsedNotebook:
@@ -80,5 +92,6 @@ def parse_notebook_bytes(data: bytes) -> ParsedNotebook:
 
     nb = nbformat.read(io.BytesIO(data), as_version=4)
     student = _extract_student_info(nb)
+    setup_code = _extract_setup_code(nb)
     tasks = _extract_tasks(nb)
-    return ParsedNotebook(student=student, tasks=tasks)
+    return ParsedNotebook(student=student, tasks=tasks, setup_code=setup_code)
