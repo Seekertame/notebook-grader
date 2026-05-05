@@ -176,9 +176,15 @@ document.getElementById("add-task-form").addEventListener("submit", async (e) =>
         const ans = form.expected_answer.value.trim();
         if (ans) body.expected_answer = ans;
     } else if (body.check_type === "tests") {
-        body.test_cases = collectTestCases(
+        const cases = collectTestCases(
             document.getElementById("test-cases-container")
         );
+        if (!cases || cases.length < 1) {
+            errBox.textContent = "Для задачи типа 'по набору тестов' необходим минимум один тест-кейс";
+            errBox.classList.remove("d-none");
+            return;
+        }
+        body.test_cases = cases;
     } else if (body.check_type === "reference_assert") {
         const code = form.reference_code.value;
         if (code) body.reference_code = code;
@@ -282,10 +288,16 @@ document.getElementById("edit-task-form").addEventListener("submit", async (e) =
         body.test_cases = null;
         body.reference_code = null;
     } else if (body.check_type === "tests") {
-        body.expected_answer = null;
-        body.test_cases = collectTestCases(
+        const cases = collectTestCases(
             document.getElementById("edit-test-cases-container")
         );
+        if (!cases || cases.length < 1) {
+            errBox.textContent = "Для задачи типа 'по набору тестов' необходим минимум один тест-кейс";
+            errBox.classList.remove("d-none");
+            return;
+        }
+        body.expected_answer = null;
+        body.test_cases = cases;
         body.reference_code = null;
     } else if (body.check_type === "reference_assert") {
         body.expected_answer = null;
@@ -333,6 +345,7 @@ document.getElementById("tasks-body").addEventListener("click", async (e) => {
     }
 
     await loadAssignment();
+    await loadSubmissions();
 });
 
 // Template upload

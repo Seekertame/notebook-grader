@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash, verify_password
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 from app.models.domain import Teacher
 
@@ -12,8 +12,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class RegisterRequest(BaseModel):
-    email: str
-    password: str
+    email: EmailStr = Field(max_length=100)
+    password: str = Field(min_length=8, max_length=64)
     display_name: str | None = None
 
 
@@ -34,7 +34,14 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.add(teacher)
     db.commit()
     db.refresh(teacher)
-    return {"id": teacher.id, "email": teacher.email}
+
+    token = create_access_token(data={"sub": teacher.email})
+    return {
+        "id": teacher.id,
+        "email": teacher.email,
+        "access_token": token,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/login")

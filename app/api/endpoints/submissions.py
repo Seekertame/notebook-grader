@@ -61,7 +61,31 @@ async def create_submissions(
     assignment_id: int,
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
+    current_teacher: Teacher = Depends(get_current_teacher),
 ):
+    assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
+        .first()
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    for f in files:
+        if not f.filename or not f.filename.lower().endswith(".ipynb"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ожидается файл *.ipynb: {f.filename or '<без имени>'}",
+            )
+        if f.size is not None and f.size > 52428800:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Файл превышает максимальный размер 50 МБ: {f.filename}",
+            )
+
     db_tasks = db.query(Task).filter(Task.assignment_id == assignment_id).all()
     if not db_tasks:
         raise HTTPException(

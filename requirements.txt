@@ -4,6 +4,8 @@ annotated-types==0.7.0
 anyio==4.13.0
 attrs==26.1.0
 click==8.3.1
+dnspython==2.8.0
+email-validator==2.3.0
 fastapi==0.135.2
 fastjsonschema==2.21.2
 greenlet==3.3.2

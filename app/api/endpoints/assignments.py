@@ -61,7 +61,10 @@ def get_assignment(
     assignment = (
         db.query(Assignment)
         .options(joinedload(Assignment.tasks))
-        .filter(Assignment.id == assignment_id)
+        .filter(
+            Assignment.id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
         .first()
     )
     if assignment is None:
@@ -134,6 +137,15 @@ def upload_template(
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
 
+    if not file.filename or not file.filename.lower().endswith(".ipynb"):
+        raise HTTPException(status_code=400, detail="Ожидается файл *.ipynb")
+
+    if file.size is not None and file.size > 52428800:
+        raise HTTPException(
+            status_code=400,
+            detail="Файл превышает максимальный размер 50 МБ",
+        )
+
     try:
         nb = nbformat.read(file.file, as_version=4)
     except Exception:
@@ -188,9 +200,30 @@ def create_task(
     db: Session = Depends(get_db),
     current_teacher: Teacher = Depends(get_current_teacher),
 ):
-    assignment = db.get(Assignment, assignment_id)
+    assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
+        .first()
+    )
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
+
+    duplicate = (
+        db.query(Task.id)
+        .filter(
+            Task.assignment_id == assignment_id,
+            Task.task_code == data.task_code,
+        )
+        .first()
+    )
+    if duplicate is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Задача с кодом '{data.task_code}' уже существует в этом задании",
+        )
 
     task = Task(
         assignment_id=assignment_id,
@@ -218,13 +251,36 @@ def update_task(
 ):
     task = (
         db.query(Task)
-        .filter(Task.id == task_id, Task.assignment_id == assignment_id)
+        .join(Assignment)
+        .filter(
+            Task.id == task_id,
+            Task.assignment_id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
         .first()
     )
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    payload = data.model_dump(exclude_unset=True)
+    new_code = payload.get("task_code")
+    if new_code is not None and new_code != task.task_code:
+        duplicate = (
+            db.query(Task.id)
+            .filter(
+                Task.assignment_id == assignment_id,
+                Task.task_code == new_code,
+                Task.id != task_id,
+            )
+            .first()
+        )
+        if duplicate is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Задача с кодом '{new_code}' уже существует в этом задании",
+            )
+
+    for field, value in payload.items():
         setattr(task, field, value)
 
     db.commit()
@@ -241,7 +297,12 @@ def delete_task(
 ):
     task = (
         db.query(Task)
-        .filter(Task.id == task_id, Task.assignment_id == assignment_id)
+        .join(Assignment)
+        .filter(
+            Task.id == task_id,
+            Task.assignment_id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
         .first()
     )
     if task is None:
@@ -268,6 +329,17 @@ def get_report(
     db: Session = Depends(get_db),
     current_teacher: Teacher = Depends(get_current_teacher),
 ):
+    assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.id == assignment_id,
+            Assignment.teacher_id == current_teacher.id,
+        )
+        .first()
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
     submissions = (
         db.query(Submission)
         .filter(Submission.assignment_id == assignment_id)

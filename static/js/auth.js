@@ -27,11 +27,9 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
         return;
     }
 
-    okBox.classList.remove("d-none");
-    form.reset();
-
-    const loginTab = document.querySelector('[data-bs-target="#login-tab"]');
-    setTimeout(() => bootstrap.Tab.getOrCreateInstance(loginTab).show(), 1500);
+    const data = await res.json();
+    localStorage.setItem("token", data.access_token);
+    window.location.href = "/dashboard";
 });
 
 document.getElementById("login-form").addEventListener("submit", async (e) => {

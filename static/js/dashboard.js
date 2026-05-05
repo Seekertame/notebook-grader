@@ -78,9 +78,8 @@ document.getElementById("create-assignment-form").addEventListener("submit", asy
         return;
     }
 
-    form.reset();
-    bootstrap.Modal.getInstance(document.getElementById("create-modal")).hide();
-    await loadAssignments();
+    const data = await res.json();
+    window.location.href = "/assignment/" + data.id;
 });
 
 // Edit assignment
