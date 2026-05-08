@@ -1,3 +1,5 @@
+import logging
+
 import nbformat
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -18,6 +20,8 @@ from app.models.api import (
 from app.models.domain import Assignment, Submission, Task, TaskResult, Teacher
 from app.models.schemas import StudentInfo, StudentWorkResult, TaskGradingResult
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
 
@@ -36,6 +40,9 @@ def create_assignment(
     db.add(assignment)
     db.commit()
     db.refresh(assignment)
+    logger.info(
+        "assignment created: id=%d, teacher_id=%d", assignment.id, current_teacher.id
+    )
     return assignment
 
 
@@ -68,6 +75,11 @@ def get_assignment(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
     return assignment
 
@@ -88,6 +100,11 @@ def update_assignment(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
 
     for field, value in data.model_dump(exclude_unset=True).items():
@@ -95,6 +112,9 @@ def update_assignment(
 
     db.commit()
     db.refresh(assignment)
+    logger.info(
+        "assignment updated: id=%d, teacher_id=%d", assignment.id, current_teacher.id
+    )
     return assignment
 
 
@@ -113,10 +133,18 @@ def delete_assignment(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
 
     db.delete(assignment)
     db.commit()
+    logger.info(
+        "assignment deleted: id=%d, teacher_id=%d", assignment_id, current_teacher.id
+    )
 
 
 @router.post("/{assignment_id}/template", response_model=TemplateUploadResponse)
@@ -135,6 +163,11 @@ def upload_template(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
 
     if not file.filename or not file.filename.lower().endswith(".ipynb"):
@@ -187,6 +220,11 @@ def upload_template(
 
     db.commit()
 
+    logger.info(
+        "template uploaded: assignment_id=%d, tasks_created=%d",
+        assignment_id,
+        len(task_codes),
+    )
     return TemplateUploadResponse(
         filename=file.filename,
         tasks_created=len(task_codes),
@@ -209,6 +247,11 @@ def create_task(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
 
     duplicate = (
@@ -220,6 +263,11 @@ def create_task(
         .first()
     )
     if duplicate is not None:
+        logger.warning(
+            "task code conflict: code=%s, assignment_id=%d",
+            data.task_code,
+            assignment_id,
+        )
         raise HTTPException(
             status_code=409,
             detail=f"Задача с кодом '{data.task_code}' уже существует в этом задании",
@@ -238,6 +286,12 @@ def create_task(
     db.add(task)
     db.commit()
     db.refresh(task)
+    logger.info(
+        "task created: task_id=%d, assignment_id=%d, teacher_id=%d",
+        task.id,
+        assignment_id,
+        current_teacher.id,
+    )
     return task
 
 
@@ -260,6 +314,11 @@ def update_task(
         .first()
     )
     if task is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=task/%d",
+            current_teacher.id,
+            task_id,
+        )
         raise HTTPException(status_code=404, detail="Task not found")
 
     payload = data.model_dump(exclude_unset=True)
@@ -275,6 +334,11 @@ def update_task(
             .first()
         )
         if duplicate is not None:
+            logger.warning(
+                "task code conflict: code=%s, assignment_id=%d",
+                new_code,
+                assignment_id,
+            )
             raise HTTPException(
                 status_code=409,
                 detail=f"Задача с кодом '{new_code}' уже существует в этом задании",
@@ -285,6 +349,12 @@ def update_task(
 
     db.commit()
     db.refresh(task)
+    logger.info(
+        "task updated: task_id=%d, assignment_id=%d, teacher_id=%d",
+        task.id,
+        assignment_id,
+        current_teacher.id,
+    )
     return task
 
 
@@ -306,6 +376,11 @@ def delete_task(
         .first()
     )
     if task is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=task/%d",
+            current_teacher.id,
+            task_id,
+        )
         raise HTTPException(status_code=404, detail="Task not found")
 
     db.delete(task)
@@ -321,6 +396,12 @@ def delete_task(
         sub.total_score = sum(tr.awarded_points for tr in sub.task_results)
 
     db.commit()
+    logger.info(
+        "task deleted: task_id=%d, assignment_id=%d, teacher_id=%d",
+        task_id,
+        assignment_id,
+        current_teacher.id,
+    )
 
 
 @router.get("/{assignment_id}/report")
@@ -338,6 +419,11 @@ def get_report(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
 
     submissions = (
@@ -347,6 +433,9 @@ def get_report(
         .all()
     )
     if not submissions:
+        logger.warning(
+            "report requested but no submissions: assignment_id=%d", assignment_id
+        )
         raise HTTPException(
             status_code=404,
             detail="No submissions found for this assignment",
@@ -375,7 +464,11 @@ def get_report(
             )
         )
 
-    csv_content = generate_csv_report(work_results)
+    max_total_score = sum(t.max_score for t in assignment.tasks)
+    csv_content = generate_csv_report(work_results, max_total_score)
+    logger.info(
+        "report exported: assignment_id=%d, rows=%d", assignment_id, len(work_results)
+    )
     return Response(
         content=csv_content,
         media_type="text/csv; charset=utf-8",

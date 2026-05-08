@@ -1,3 +1,35 @@
+function formatValidationErrors(detail) {
+    if (!Array.isArray(detail)) return null;
+    const messages = [];
+    for (const err of detail) {
+        const loc = Array.isArray(err.loc) ? err.loc : [];
+        const field = loc[loc.length - 1];
+        const msg = (err.msg || "").toLowerCase();
+        const type = (err.type || "").toLowerCase();
+
+        if (field === "email") {
+            if (type.includes("email") || msg.includes("email")) {
+                messages.push("Некорректный формат email");
+            } else if (msg.includes("at most") || msg.includes("max_length") || type.includes("string_too_long")) {
+                messages.push("Email не должен превышать 100 символов");
+            } else {
+                messages.push("Некорректный email");
+            }
+        } else if (field === "password") {
+            if (msg.includes("at least") || msg.includes("min_length") || type.includes("string_too_short")) {
+                messages.push("Пароль должен содержать не менее 8 символов");
+            } else if (msg.includes("at most") || msg.includes("max_length") || type.includes("string_too_long")) {
+                messages.push("Пароль не должен превышать 64 символа");
+            } else {
+                messages.push("Некорректный пароль");
+            }
+        } else {
+            return null;
+        }
+    }
+    return messages.length ? messages.join("\n") : null;
+}
+
 document.getElementById("register-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -21,7 +53,12 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
 
     if (!res.ok) {
         const data = await res.json();
-        const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+        let msg;
+        if (res.status === 422) {
+            msg = formatValidationErrors(data.detail) || "Проверьте корректность введённых данных";
+        } else {
+            msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+        }
         errBox.textContent = msg || "Ошибка регистрации";
         errBox.classList.remove("d-none");
         return;

@@ -51,6 +51,7 @@ async function loadSubmissions() {
             <td>${s.student_fio}</td>
             <td>${s.student_group}</td>
             <td>${s.total_score}</td>
+            <td>${s.grade}</td>
             <td><span class="badge bg-info">Проверено</span></td>
             <td>
                 <button class="btn btn-outline-danger btn-sm delete-submission-btn"
@@ -398,6 +399,11 @@ document.getElementById("upload-form").addEventListener("submit", async (e) => {
 
     const fileInput = document.getElementById("ipynbFiles");
     const fileCount = fileInput.files.length;
+
+    if (fileCount > 10) {
+        alert("За одну операцию можно загрузить не более 10 файлов");
+        return;
+    }
 
     const formData = new FormData();
     for (const f of fileInput.files) {

@@ -2,9 +2,12 @@ import csv
 import io
 
 from app.models.schemas import StudentWorkResult
+from app.utils.grading import calculate_grade
 
 
-def generate_csv_report(results: list[StudentWorkResult]) -> bytes:
+def generate_csv_report(
+    results: list[StudentWorkResult], max_total_score: int
+) -> bytes:
     task_codes: list[str] = []
     seen: set[str] = set()
     for result in results:
@@ -17,6 +20,7 @@ def generate_csv_report(results: list[StudentWorkResult]) -> bytes:
     for code in task_codes:
         header.append(code)
     header.append("Итоговый балл")
+    header.append("Оценка")
     header.append("Статус проверки")
 
     buf = io.StringIO()
@@ -46,8 +50,9 @@ def generate_csv_report(results: list[StudentWorkResult]) -> bytes:
                 statuses.append(f"{code}: не найдена")
 
         row.append(str(result.total_score))
+        row.append(str(calculate_grade(result.total_score, max_total_score)))
         row.append("; ".join(statuses) if statuses else "успешно")
 
         writer.writerow(row)
 
-    return ("\ufeff" + buf.getvalue()).encode("utf-8")
+    return ("﻿" + buf.getvalue()).encode("utf-8")

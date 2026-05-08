@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -6,9 +8,16 @@ from app.core.security import get_current_teacher
 from app.grader.checker import grade_task
 from app.grader.executor import run_code_in_sandbox
 from app.grader.parser import parse_notebook_bytes
-from app.models.api import BatchSubmissionResponse, SubmissionBriefResult, SubmissionResponse
+from app.models.api import (
+    BatchSubmissionResponse,
+    SubmissionBriefResult,
+    SubmissionResponse,
+)
 from app.models.domain import Assignment, Submission, Task, TaskResult, Teacher
 from app.models.schemas import TaskConfig
+from app.utils.grading import calculate_grade
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["submissions"])
 
@@ -72,15 +81,48 @@ async def create_submissions(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
+
+    if len(files) > 10:
+        logger.warning(
+            "submissions upload rejected: assignment_id=%d, files=%d, reason=batch_limit",
+            assignment_id,
+            len(files),
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="За одну операцию можно загрузить не более 10 файлов",
+        )
+
+    logger.info(
+        "submissions upload started: assignment_id=%d, files=%d, teacher_id=%d",
+        assignment_id,
+        len(files),
+        current_teacher.id,
+    )
 
     for f in files:
         if not f.filename or not f.filename.lower().endswith(".ipynb"):
+            logger.warning(
+                "submission rejected: assignment_id=%d, filename=%s, reason=not_ipynb",
+                assignment_id,
+                f.filename or "<без имени>",
+            )
             raise HTTPException(
                 status_code=400,
                 detail=f"Ожидается файл *.ipynb: {f.filename or '<без имени>'}",
             )
         if f.size is not None and f.size > 52428800:
+            logger.warning(
+                "submission rejected: assignment_id=%d, filename=%s, reason=size_limit",
+                assignment_id,
+                f.filename,
+            )
             raise HTTPException(
                 status_code=400,
                 detail=f"Файл превышает максимальный размер 50 МБ: {f.filename}",
@@ -88,6 +130,10 @@ async def create_submissions(
 
     db_tasks = db.query(Task).filter(Task.assignment_id == assignment_id).all()
     if not db_tasks:
+        logger.warning(
+            "submissions upload rejected: assignment_id=%d, reason=no_tasks",
+            assignment_id,
+        )
         raise HTTPException(
             status_code=404,
             detail="Assignment not found or has no tasks",
@@ -102,6 +148,12 @@ async def create_submissions(
         try:
             fio, group, total_score, grading_results = _grade_one(content, db_tasks)
         except Exception as exc:
+            logger.error(
+                "submission grading failed: assignment_id=%d, filename=%s, error=%s",
+                assignment_id,
+                file.filename,
+                exc,
+            )
             results.append(
                 SubmissionBriefResult(
                     student_fio=file.filename or "",
@@ -146,6 +198,12 @@ async def create_submissions(
 
     db.commit()
 
+    logger.info(
+        "submissions upload completed: assignment_id=%d, processed=%d",
+        assignment_id,
+        success_count,
+    )
+
     return BatchSubmissionResponse(
         total=len(files),
         success=success_count,
@@ -172,14 +230,38 @@ def list_submissions(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
 
-    return (
+    submissions = (
         db.query(Submission)
         .filter(Submission.assignment_id == assignment_id)
         .order_by(Submission.student_fio)
         .all()
     )
+    max_total = (
+        db.query(Task)
+        .filter(Task.assignment_id == assignment_id)
+        .with_entities(Task.max_score)
+        .all()
+    )
+    max_total_score = sum(row[0] for row in max_total)
+
+    return [
+        SubmissionResponse(
+            id=s.id,
+            student_fio=s.student_fio,
+            student_group=s.student_group,
+            status=s.status,
+            total_score=s.total_score,
+            grade=calculate_grade(s.total_score, max_total_score),
+        )
+        for s in submissions
+    ]
 
 
 @router.delete("/submissions/{submission_id}", status_code=204)
@@ -198,10 +280,18 @@ def delete_submission(
         .first()
     )
     if submission is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=submission/%d",
+            current_teacher.id,
+            submission_id,
+        )
         raise HTTPException(status_code=404, detail="Submission not found")
 
     db.delete(submission)
     db.commit()
+    logger.info(
+        "submission deleted: id=%d, teacher_id=%d", submission_id, current_teacher.id
+    )
 
 
 @router.delete("/assignments/{assignment_id}/submissions", status_code=204)
@@ -219,6 +309,11 @@ def delete_all_submissions(
         .first()
     )
     if assignment is None:
+        logger.warning(
+            "access denied: teacher_id=%d, requested resource=assignment/%d",
+            current_teacher.id,
+            assignment_id,
+        )
         raise HTTPException(status_code=404, detail="Assignment not found")
 
     submissions = (
@@ -226,6 +321,10 @@ def delete_all_submissions(
         .filter(Submission.assignment_id == assignment_id)
         .all()
     )
+    removed = len(submissions)
     for sub in submissions:
         db.delete(sub)
     db.commit()
+    logger.info(
+        "submissions cleared: assignment_id=%d, removed=%d", assignment_id, removed
+    )

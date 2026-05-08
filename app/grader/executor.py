@@ -9,7 +9,8 @@ from app.models.schemas import ExecutionResult, ExecutionStatus
 logger = logging.getLogger(__name__)
 
 SANDBOX_IMAGE = "notebook-grader-sandbox"
-TIMEOUT_SECONDS = 5
+TIMEOUT_SECONDS = 30
+MEMORY_LIMIT = "1g"
 
 
 def run_code_in_sandbox(code: str) -> ExecutionResult:
@@ -19,7 +20,9 @@ def run_code_in_sandbox(code: str) -> ExecutionResult:
         image=SANDBOX_IMAGE,
         command=["python", "-c", code],
         network_disabled=True,
-        mem_limit="256m",
+        mem_limit=MEMORY_LIMIT,
+        read_only=True,
+        tmpfs={"/tmp": "size=64m,mode=1777"},
         detach=True,
         stderr=True,
     )

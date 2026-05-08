@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -7,6 +9,8 @@ from app.core.security import create_access_token, get_password_hash, verify_pas
 from pydantic import BaseModel, EmailStr, Field
 
 from app.models.domain import Teacher
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -21,6 +25,7 @@ class RegisterRequest(BaseModel):
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
     existing = db.query(Teacher).filter(Teacher.email == data.email).first()
     if existing:
+        logger.warning("register conflict: email=%s", data.email)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
@@ -34,6 +39,8 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.add(teacher)
     db.commit()
     db.refresh(teacher)
+
+    logger.info("user registered: email=%s, teacher_id=%d", teacher.email, teacher.id)
 
     token = create_access_token(data={"sub": teacher.email})
     return {
@@ -51,11 +58,13 @@ def login(
 ):
     teacher = db.query(Teacher).filter(Teacher.email == form_data.username).first()
     if teacher is None or not verify_password(form_data.password, teacher.hashed_password):
+        logger.warning("login failed: email=%s", form_data.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    logger.info("login success: teacher_id=%d", teacher.id)
     token = create_access_token(data={"sub": teacher.email})
     return {"access_token": token, "token_type": "bearer"}

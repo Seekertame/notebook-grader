@@ -4,6 +4,7 @@ __pycache__/
 *.sqlite3
 .claude/
 CLAUDE.md
+AGENTS.md
 generate_test.py
 docs/
 ipynb files/

@@ -18,8 +18,13 @@
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">Мои задания</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal"
-                    data-bs-target="#create-modal">Создать задание</button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" id="download-template-btn">
+                    Скачать шаблон
+                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal"
+                        data-bs-target="#create-modal">Создать задание</button>
+            </div>
         </div>
 
         <table class="table table-striped" id="assignments-table">
@@ -105,6 +110,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/dashboard.js?v=2"></script>
+    <script src="/static/js/dashboard.js?v=3"></script>
 </body>
 </html>

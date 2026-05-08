@@ -87,6 +87,7 @@ class SubmissionResponse(BaseModel):
     student_group: str
     status: str
     total_score: int
+    grade: int
 
 
 class SubmissionBriefResult(BaseModel):

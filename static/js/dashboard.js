@@ -145,6 +145,23 @@ document.getElementById("assignments-body").addEventListener("click", async (e) 
     await loadAssignments();
 });
 
+document.getElementById("download-template-btn").addEventListener("click", async () => {
+    const res = await fetchWithAuth("/api/v1/template/download");
+    if (!res.ok) {
+        alert("Не удалось скачать шаблон");
+        return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "notebook_grader_template.ipynb";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+});
+
 document.getElementById("logout-btn").addEventListener("click", () => {
     localStorage.removeItem("token");
     window.location.href = "/";
