@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -9,7 +10,15 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.domain import Teacher
 
-SECRET_KEY = "CHANGE_ME_IN_PRODUCTION"
+SECRET_KEY = os.getenv("NBGRADER_SECRET_KEY")
+if SECRET_KEY is None:
+    import warnings
+    warnings.warn(
+        "Переменная окружения NBGRADER_SECRET_KEY не установлена. "
+        "Используется значение по умолчанию, не безопасное для production.",
+        RuntimeWarning,
+    )
+    SECRET_KEY = "CHANGE_ME_IN_PRODUCTION"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 

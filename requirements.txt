@@ -5,6 +5,7 @@ anyio==4.13.0
 attrs==26.1.0
 click==8.3.1
 dnspython==2.8.0
+docker==7.1.0
 email-validator==2.3.0
 fastapi==0.135.2
 fastjsonschema==2.21.2
@@ -14,11 +15,9 @@ idna==3.11
 iniconfig==2.3.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
-jupyter_client==8.8.0
 jupyter_core==5.9.1
 Mako==1.3.10
 MarkupSafe==3.0.3
-nbclient==0.10.4
 nbformat==5.10.4
 packaging==26.0
 platformdirs==4.9.4

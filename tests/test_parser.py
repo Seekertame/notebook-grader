@@ -8,7 +8,6 @@ from app.grader.parser import parse_notebook
 def _make_notebook(tmp_path: Path) -> Path:
     nb = nbformat.v4.new_notebook()
 
-    # Markdown cell with student info
     nb.cells.append(
         nbformat.v4.new_markdown_cell(
             "<!-- STUDENT_INFO -->\n"
@@ -17,15 +16,12 @@ def _make_notebook(tmp_path: Path) -> Path:
         )
     )
 
-    # Regular code cell (no task tag)
     nb.cells.append(nbformat.v4.new_code_cell("import pandas as pd"))
 
-    # Task A1
     cell_a1 = nbformat.v4.new_code_cell("x = 2 + 2\nprint(x)")
     cell_a1.metadata["tags"] = ["task:A1"]
     nb.cells.append(cell_a1)
 
-    # Task B2
     cell_b2 = nbformat.v4.new_code_cell("result = [i**2 for i in range(10)]")
     cell_b2.metadata["tags"] = ["task:B2", "optional"]
     nb.cells.append(cell_b2)

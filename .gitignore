@@ -1,10 +1,75 @@
-.venv/
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# IDE / local tools
 .idea/
-*.sqlite3
+.vscode/
 .claude/
 CLAUDE.md
 AGENTS.md
-generate_test.py
-docs/
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.sqlite3-journal
+pgdata/
+
+# Logs / temp
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+
+# App/user-generated data
+uploads/
+submissions/
+reports/
+exports/
+*.csv
+!tests/**/*.csv
+
+# Notebooks: local work only
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+*.ipynb~
 ipynb files/
+*:Zone.Identifier
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Local scratch
+generate_test.py

@@ -21,6 +21,7 @@ def run_code_in_sandbox(code: str) -> ExecutionResult:
         command=["python", "-c", code],
         network_disabled=True,
         mem_limit=MEMORY_LIMIT,
+        nano_cpus=1_000_000_000,
         read_only=True,
         tmpfs={"/tmp": "size=64m,mode=1777"},
         detach=True,

@@ -30,11 +30,9 @@ def _extract_student_info(nb: nbformat.NotebookNode) -> StudentInfo | None:
         if not _MARKER_RE.search(source):
             continue
 
-        # Strip markdown formatting first, then flatten to single line
         clean = _strip_markdown(source)
         flat = clean.replace("\n", " ")
 
-        # Extract FIO: value ends at "Группа" keyword or end of string
         fio_match = re.search(
             r"ФИО\s*:\s*(.+?)(?=\s*Группа\s*:|$)",
             flat,
@@ -42,7 +40,6 @@ def _extract_student_info(nb: nbformat.NotebookNode) -> StudentInfo | None:
         )
         fio = fio_match.group(1).strip() if fio_match else ""
 
-        # Extract Group
         group_match = re.search(
             r"Группа\s*:\s*(.+)",
             flat,
