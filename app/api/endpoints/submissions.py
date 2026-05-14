@@ -16,6 +16,7 @@ from app.models.api import (
 from app.models.domain import Assignment, Submission, Task, TaskResult, Teacher
 from app.models.schemas import TaskConfig
 from app.utils.grading import calculate_grade
+from app.utils.uploads import read_upload_with_limit
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ router = APIRouter(tags=["submissions"])
 
 
 def _grade_one(content: bytes, db_tasks: list[Task]) -> tuple[str, str, int, list]:
-    """Parse and grade a single notebook. Returns (fio, group, total_score, grading_results)."""
+    """Парсит и проверяет один ноутбук. Возвращает (ФИО, группа, итоговый балл, результаты задач)."""
     parsed = parse_notebook_bytes(content)
     code_map = {cell.task_code: cell.source for cell in parsed.tasks}
     setup_code = parsed.setup_code
@@ -117,16 +118,6 @@ async def create_submissions(
                 status_code=400,
                 detail=f"Ожидается файл *.ipynb: {f.filename or '<без имени>'}",
             )
-        if f.size is not None and f.size > 52428800:
-            logger.warning(
-                "submission rejected: assignment_id=%d, filename=%s, reason=size_limit",
-                assignment_id,
-                f.filename,
-            )
-            raise HTTPException(
-                status_code=400,
-                detail=f"Файл превышает максимальный размер 50 МБ: {f.filename}",
-            )
 
     db_tasks = db.query(Task).filter(Task.assignment_id == assignment_id).all()
     if not db_tasks:
@@ -143,7 +134,16 @@ async def create_submissions(
     success_count = 0
 
     for file in files:
-        content = await file.read()
+        try:
+            content = await read_upload_with_limit(file)
+        except HTTPException as exc:
+            if exc.status_code == 413:
+                logger.warning(
+                    "submission rejected: assignment_id=%d, filename=%s, reason=size_limit",
+                    assignment_id,
+                    file.filename,
+                )
+            raise
 
         try:
             fio, group, total_score, grading_results = _grade_one(content, db_tasks)

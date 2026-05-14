@@ -11,7 +11,7 @@ _TASK_TAG_RE = re.compile(r"^task:(.+)$")
 
 
 def _strip_markdown(text: str) -> str:
-    """Remove markdown bold/italic markers (* and _) and strip whitespace."""
+    """Удаляет markdown-маркеры жирного/курсивного начертания (* и _) и обрезает пробелы."""
     return re.sub(r"[*_]", "", text).strip()
 
 
@@ -23,6 +23,7 @@ def _normalize_source(cell) -> str:
 
 
 def _extract_student_info(nb: nbformat.NotebookNode) -> StudentInfo | None:
+    # анкета студента ищется по обязательному маркеру <!-- STUDENT_INFO -->
     for cell in nb.cells:
         if cell.cell_type != "markdown":
             continue

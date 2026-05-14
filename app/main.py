@@ -1,20 +1,72 @@
 import logging
+import os
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.endpoints.assignments import router as assignments_router
 from app.api.endpoints.auth import router as auth_router
 from app.api.endpoints.submissions import router as submissions_router
 from app.api.endpoints.template import router as template_router
+from app.core.rate_limit import limiter
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
-app = FastAPI(title="Notebook Grader API")
+
+def _split_csv_env(name: str) -> list[str]:
+    raw = os.getenv(name, "")
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+ENVIRONMENT = os.getenv("NBGRADER_ENVIRONMENT", "development").lower()
+IS_PRODUCTION = ENVIRONMENT == "production"
+
+ALLOWED_HOSTS = _split_csv_env("NBGRADER_ALLOWED_HOSTS")
+CORS_ORIGINS = _split_csv_env("NBGRADER_CORS_ORIGINS")
+
+if IS_PRODUCTION:
+    if not ALLOWED_HOSTS:
+        raise RuntimeError(
+            "NBGRADER_ALLOWED_HOSTS must be set in production "
+            "(comma-separated list of hostnames)"
+        )
+    if not CORS_ORIGINS:
+        raise RuntimeError(
+            "NBGRADER_CORS_ORIGINS must be set in production "
+            "(comma-separated list of allowed origins)"
+        )
+
+_fastapi_kwargs: dict = {"title": "Notebook Grader API"}
+if IS_PRODUCTION:
+    _fastapi_kwargs.update(docs_url=None, redoc_url=None, openapi_url=None)
+
+app = FastAPI(**_fastapi_kwargs)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=ALLOWED_HOSTS or ["*"],
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

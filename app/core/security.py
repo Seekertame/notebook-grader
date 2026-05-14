@@ -12,13 +12,7 @@ from app.models.domain import Teacher
 
 SECRET_KEY = os.getenv("NBGRADER_SECRET_KEY")
 if SECRET_KEY is None:
-    import warnings
-    warnings.warn(
-        "Переменная окружения NBGRADER_SECRET_KEY не установлена. "
-        "Используется значение по умолчанию, не безопасное для production.",
-        RuntimeWarning,
-    )
-    SECRET_KEY = "CHANGE_ME_IN_PRODUCTION"
+    raise RuntimeError("NBGRADER_SECRET_KEY environment variable is required")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 

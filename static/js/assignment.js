@@ -95,7 +95,7 @@ function renderTasks(tasks) {
     });
 }
 
-// Dynamic fields for check_type
+// Динамические поля формы в зависимости от check_type
 const checkTypeSelect = document.getElementById("check-type-select");
 const answerField = document.getElementById("answer-field");
 const testsField = document.getElementById("tests-field");
@@ -211,7 +211,7 @@ document.getElementById("add-task-form").addEventListener("submit", async (e) =>
     await loadAssignment();
 });
 
-// Edit task modal: dynamic fields
+// Модальное окно редактирования задачи: динамические поля
 const editCheckTypeSelect = document.getElementById("edit-check-type-select");
 const editAnswerField = document.getElementById("edit-answer-field");
 const editTestsField = document.getElementById("edit-tests-field");
@@ -234,7 +234,7 @@ editCheckTypeSelect.addEventListener("change", () => {
     }
 });
 
-// Open edit task modal
+// Открытие модального окна редактирования задачи
 document.getElementById("tasks-body").addEventListener("click", (e) => {
     const editBtn = e.target.closest(".edit-task-btn");
     if (editBtn) {
@@ -269,7 +269,7 @@ document.getElementById("tasks-body").addEventListener("click", (e) => {
     }
 });
 
-// Submit edit task
+// Отправка формы редактирования задачи
 document.getElementById("edit-task-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -326,7 +326,7 @@ document.getElementById("edit-task-form").addEventListener("submit", async (e) =
     await loadAssignment();
 });
 
-// Delete task
+// Удаление задачи
 document.getElementById("tasks-body").addEventListener("click", async (e) => {
     const delBtn = e.target.closest(".delete-task-btn");
     if (!delBtn) return;
@@ -349,7 +349,7 @@ document.getElementById("tasks-body").addEventListener("click", async (e) => {
     await loadSubmissions();
 });
 
-// Template upload
+// Загрузка шаблона ноутбука
 document.getElementById("template-file").addEventListener("change", async (e) => {
     const fileInput = e.target;
     const file = fileInput.files[0];
@@ -445,7 +445,7 @@ document.getElementById("upload-form").addEventListener("submit", async (e) => {
     await loadSubmissions();
 });
 
-// Delete single submission
+// Удаление одной работы студента
 document.getElementById("submissions-body").addEventListener("click", async (e) => {
     const delBtn = e.target.closest(".delete-submission-btn");
     if (!delBtn) return;
@@ -465,7 +465,7 @@ document.getElementById("submissions-body").addEventListener("click", async (e) 
     await loadSubmissions();
 });
 
-// Clear all submissions
+// Очистка всех работ
 document.getElementById("clear-all-submissions").addEventListener("click", async () => {
     if (!confirm("Вы уверены? Будут удалены все загруженные работы и оценки для этого задания!")) return;
 

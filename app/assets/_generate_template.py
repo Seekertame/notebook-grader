@@ -1,6 +1,6 @@
-"""One-off generator for notebook_grader_template.ipynb.
+"""Разовый генератор файла notebook_grader_template.ipynb.
 
-Run once to (re)generate the static template:
+Запускается, когда нужно пересобрать статический шаблон:
     python -m app.assets._generate_template
 """
 from pathlib import Path

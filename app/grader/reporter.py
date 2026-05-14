@@ -2,6 +2,7 @@ import csv
 import io
 
 from app.models.schemas import StudentWorkResult
+from app.utils.csv_safety import escape_csv_value
 from app.utils.grading import calculate_grade
 
 
@@ -31,8 +32,8 @@ def generate_csv_report(
         task_map = {tr.task_code: tr for tr in result.task_results}
 
         row: list[str] = [
-            result.student.fio,
-            result.student.group,
+            escape_csv_value(result.student.fio),
+            escape_csv_value(result.student.group),
         ]
 
         statuses = []
@@ -51,7 +52,7 @@ def generate_csv_report(
 
         row.append(str(result.total_score))
         row.append(str(calculate_grade(result.total_score, max_total_score)))
-        row.append("; ".join(statuses) if statuses else "успешно")
+        row.append(escape_csv_value("; ".join(statuses) if statuses else "успешно"))
 
         writer.writerow(row)
 

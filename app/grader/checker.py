@@ -17,7 +17,7 @@ MAX_EXPLANATION_CHARS = 300
 def wrap_code_with_stdin(code: str, input_data: str) -> str:
     return (
         "import sys, io\n"
-        f'sys.stdin = io.StringIO("""{input_data}""")\n'
+        f"sys.stdin = io.StringIO({input_data!r})\n"
         f"{code}"
     )
 
@@ -27,6 +27,7 @@ def _values_match(actual: str, expected: str) -> bool:
     expected = expected.rstrip()
 
     try:
+        # вещественные числа сравниваются с точностью до 4 знаков после запятой
         return round(float(actual), 4) == round(float(expected), 4)
     except ValueError:
         return actual == expected
@@ -170,11 +171,10 @@ _SYSTEM_SETUP = "def display(*args, **kwargs): print(*args)\n\n"
 
 
 def _prepend_setup(setup_code: str, code: str) -> str:
-    # Marker comment so traceback line numbers are easier to interpret
     parts = [_SYSTEM_SETUP]
     if setup_code:
         parts.append(setup_code)
-    parts.append("# --- student code below ---")
+    parts.append("# --- код студента ниже ---")
     parts.append(code)
     return "\n".join(parts)
 

@@ -19,6 +19,7 @@ from app.models.api import (
 )
 from app.models.domain import Assignment, Submission, Task, TaskResult, Teacher
 from app.models.schemas import StudentInfo, StudentWorkResult, TaskGradingResult
+from app.utils.uploads import read_upload_with_limit
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +149,7 @@ def delete_assignment(
 
 
 @router.post("/{assignment_id}/template", response_model=TemplateUploadResponse)
-def upload_template(
+async def upload_template(
     assignment_id: int,
     file: UploadFile,
     db: Session = Depends(get_db),
@@ -173,14 +174,10 @@ def upload_template(
     if not file.filename or not file.filename.lower().endswith(".ipynb"):
         raise HTTPException(status_code=400, detail="Ожидается файл *.ipynb")
 
-    if file.size is not None and file.size > 52428800:
-        raise HTTPException(
-            status_code=400,
-            detail="Файл превышает максимальный размер 50 МБ",
-        )
+    content = await read_upload_with_limit(file)
 
     try:
-        nb = nbformat.read(file.file, as_version=4)
+        nb = nbformat.reads(content.decode("utf-8"), as_version=4)
     except Exception:
         raise HTTPException(
             status_code=400,

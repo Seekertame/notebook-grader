@@ -82,7 +82,7 @@ document.getElementById("create-assignment-form").addEventListener("submit", asy
     window.location.href = "/assignment/" + data.id;
 });
 
-// Edit assignment
+// Редактирование задания
 document.getElementById("assignments-body").addEventListener("click", (e) => {
     const editBtn = e.target.closest(".edit-assignment-btn");
     if (editBtn) {
@@ -126,7 +126,7 @@ document.getElementById("edit-assignment-form").addEventListener("submit", async
     await loadAssignments();
 });
 
-// Delete assignment
+// Удаление задания
 document.getElementById("assignments-body").addEventListener("click", async (e) => {
     const delBtn = e.target.closest(".delete-assignment-btn");
     if (!delBtn) return;
