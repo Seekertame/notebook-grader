@@ -28,9 +28,9 @@ router = APIRouter(prefix="/assignments", tags=["assignments"])
 
 @router.post("", response_model=AssignmentResponse)
 def create_assignment(
-    data: AssignmentCreate,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        data: AssignmentCreate,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = Assignment(
         title=data.title,
@@ -49,8 +49,8 @@ def create_assignment(
 
 @router.get("", response_model=list[AssignmentResponse])
 def list_assignments(
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     return (
         db.query(Assignment)
@@ -62,9 +62,9 @@ def list_assignments(
 
 @router.get("/{assignment_id}", response_model=AssignmentResponse)
 def get_assignment(
-    assignment_id: int,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)
@@ -87,10 +87,10 @@ def get_assignment(
 
 @router.put("/{assignment_id}", response_model=AssignmentResponse)
 def update_assignment(
-    assignment_id: int,
-    data: AssignmentUpdate,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        data: AssignmentUpdate,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)
@@ -121,9 +121,9 @@ def update_assignment(
 
 @router.delete("/{assignment_id}", status_code=204)
 def delete_assignment(
-    assignment_id: int,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)
@@ -150,10 +150,10 @@ def delete_assignment(
 
 @router.post("/{assignment_id}/template", response_model=TemplateUploadResponse)
 async def upload_template(
-    assignment_id: int,
-    file: UploadFile,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        file: UploadFile,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)
@@ -230,10 +230,10 @@ async def upload_template(
 
 @router.post("/{assignment_id}/tasks", response_model=TaskResponse)
 def create_task(
-    assignment_id: int,
-    data: TaskCreate,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        data: TaskCreate,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)
@@ -294,11 +294,11 @@ def create_task(
 
 @router.put("/{assignment_id}/tasks/{task_id}", response_model=TaskResponse)
 def update_task(
-    assignment_id: int,
-    task_id: int,
-    data: TaskUpdate,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        task_id: int,
+        data: TaskUpdate,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     task = (
         db.query(Task)
@@ -357,10 +357,10 @@ def update_task(
 
 @router.delete("/{assignment_id}/tasks/{task_id}", status_code=204)
 def delete_task(
-    assignment_id: int,
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        task_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     task = (
         db.query(Task)
@@ -403,9 +403,9 @@ def delete_task(
 
 @router.get("/{assignment_id}/report")
 def get_report(
-    assignment_id: int,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)

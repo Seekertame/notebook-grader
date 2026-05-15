@@ -1,6 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
 _TESTS_REQUIRED_MSG = "Для задачи типа 'по набору тестов' необходим минимум один тест-кейс"
 
 

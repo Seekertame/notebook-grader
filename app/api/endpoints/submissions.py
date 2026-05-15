@@ -68,10 +68,10 @@ def _grade_one(content: bytes, db_tasks: list[Task]) -> tuple[str, str, int, lis
     response_model=BatchSubmissionResponse,
 )
 async def create_submissions(
-    assignment_id: int,
-    files: list[UploadFile] = File(...),
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        files: list[UploadFile] = File(...),
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)
@@ -217,9 +217,9 @@ async def create_submissions(
     response_model=list[SubmissionResponse],
 )
 def list_submissions(
-    assignment_id: int,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)
@@ -266,9 +266,9 @@ def list_submissions(
 
 @router.delete("/submissions/{submission_id}", status_code=204)
 def delete_submission(
-    submission_id: int,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        submission_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     submission = (
         db.query(Submission)
@@ -296,9 +296,9 @@ def delete_submission(
 
 @router.delete("/assignments/{assignment_id}/submissions", status_code=204)
 def delete_all_submissions(
-    assignment_id: int,
-    db: Session = Depends(get_db),
-    current_teacher: Teacher = Depends(get_current_teacher),
+        assignment_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: Teacher = Depends(get_current_teacher),
 ):
     assignment = (
         db.query(Assignment)

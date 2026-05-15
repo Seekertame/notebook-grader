@@ -7,7 +7,7 @@ from app.utils.grading import calculate_grade
 
 
 def generate_csv_report(
-    results: list[StudentWorkResult], max_total_score: int
+        results: list[StudentWorkResult], max_total_score: int
 ) -> bytes:
     task_codes: list[str] = []
     seen: set[str] = set()

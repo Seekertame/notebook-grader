@@ -63,9 +63,9 @@ def _execution_failed(result: ExecutionResult) -> TaskGradingResult | None:
 
 
 def _grade_by_answer(
-    code: str,
-    config: TaskConfig,
-    executor_func: Callable[[str], ExecutionResult],
+        code: str,
+        config: TaskConfig,
+        executor_func: Callable[[str], ExecutionResult],
 ) -> TaskGradingResult:
     result = executor_func(code)
 
@@ -101,9 +101,9 @@ def _grade_by_answer(
 
 
 def _grade_by_tests(
-    code: str,
-    config: TaskConfig,
-    executor_func: Callable[[str], ExecutionResult],
+        code: str,
+        config: TaskConfig,
+        executor_func: Callable[[str], ExecutionResult],
 ) -> TaskGradingResult:
     if not config.test_cases:
         return TaskGradingResult(
@@ -141,9 +141,9 @@ def _grade_by_tests(
 
 
 def _grade_by_reference_assert(
-    code: str,
-    config: TaskConfig,
-    executor_func: Callable[[str], ExecutionResult],
+        code: str,
+        config: TaskConfig,
+        executor_func: Callable[[str], ExecutionResult],
 ) -> TaskGradingResult:
     if not config.reference_code:
         return TaskGradingResult(
@@ -180,10 +180,10 @@ def _prepend_setup(setup_code: str, code: str) -> str:
 
 
 def grade_task(
-    code: str,
-    config: TaskConfig,
-    executor_func: Callable[[str], ExecutionResult],
-    setup_code: str = "",
+        code: str,
+        config: TaskConfig,
+        executor_func: Callable[[str], ExecutionResult],
+        setup_code: str = "",
 ) -> TaskGradingResult:
     full_code = _prepend_setup(setup_code, code)
     if config.check_type == CheckType.ANSWER:

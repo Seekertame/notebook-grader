@@ -5,9 +5,9 @@ CHUNK_SIZE = 64 * 1024
 
 
 async def read_upload_with_limit(
-    upload: UploadFile,
-    max_size: int = MAX_UPLOAD_SIZE,
-    chunk_size: int = CHUNK_SIZE,
+        upload: UploadFile,
+        max_size: int = MAX_UPLOAD_SIZE,
+        chunk_size: int = CHUNK_SIZE,
 ) -> bytes:
     chunks: list[bytes] = []
     total = 0

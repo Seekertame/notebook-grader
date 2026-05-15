@@ -34,9 +34,9 @@ class RegisterRequest(BaseModel):
 @router.post("/register")
 @limiter.limit("5/hour")
 def register(
-    request: Request,
-    data: RegisterRequest,
-    db: Session = Depends(get_db),
+        request: Request,
+        data: RegisterRequest,
+        db: Session = Depends(get_db),
 ):
     existing = db.query(Teacher).filter(Teacher.email == data.email).first()
     if existing:
@@ -69,9 +69,9 @@ def register(
 @router.post("/login")
 @limiter.limit("10/minute")
 def login(
-    request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+        request: Request,
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: Session = Depends(get_db),
 ):
     teacher = db.query(Teacher).filter(Teacher.email == form_data.username).first()
     if teacher is None or not verify_password(form_data.password, teacher.hashed_password):

@@ -9,16 +9,16 @@ from app.models.domain import Teacher
 router = APIRouter(prefix="/template", tags=["template"])
 
 _TEMPLATE_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "assets"
-    / "notebook_grader_template.ipynb"
+        Path(__file__).resolve().parents[2]
+        / "assets"
+        / "notebook_grader_template.ipynb"
 )
 _TEMPLATE_FILENAME = "notebook_grader_template.ipynb"
 
 
 @router.get("/download")
 def download_template(
-    _current_teacher: Teacher = Depends(get_current_teacher),
+        _current_teacher: Teacher = Depends(get_current_teacher),
 ):
     if not _TEMPLATE_PATH.is_file():
         raise HTTPException(status_code=500, detail="Template asset is missing")
