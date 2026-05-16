@@ -1,0 +1,48 @@
+[Unit]
+Description=Notebook Grader (FastAPI / uvicorn)
+Documentation=https://github.com/Seekertame/notebook-grader
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=notebook-grader
+Group=notebook-grader
+SupplementaryGroups=docker
+
+WorkingDirectory=/opt/notebook-grader
+EnvironmentFile=/opt/notebook-grader/.env
+
+ExecStart=/opt/notebook-grader/.venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 1 \
+    --proxy-headers \
+    --forwarded-allow-ips=127.0.0.1
+
+Restart=always
+RestartSec=5
+TimeoutStartSec=300
+TimeoutStopSec=20
+# uvicorn не шлёт sd_notify, синхронный грейдинг может надолго блокировать цикл.
+WatchdogSec=0
+KillSignal=SIGINT
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+# Нужно для Docker socket и PostgreSQL на 127.0.0.1, поэтому PrivateNetwork не ставим.
+ReadWritePaths=/opt/notebook-grader/logs /tmp
+
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
