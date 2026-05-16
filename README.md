@@ -6,6 +6,10 @@
 
 > Курсовой проект: Т. З. Бюрчиев, группа БПИ 248.
 
+**Развёрнутая демо-версия:** https://notebook-grader.tw1.ru
+
+Для открытия демо рекомендуется Firefox: в Chromium-based браузерах (Chrome, Yandex, Edge, новые Safari) из РФ-сетей наблюдается TLS-задержка до 10 секунд на первом подключении (подробности — в `deploy/README.md`, раздел «Производительность TLS-handshake в Chromium из РФ»).
+
 ---
 
 ## Содержание
@@ -282,12 +286,23 @@ alembic downgrade -1
 
 ## Тесты
 
+Pytest и прочие dev-зависимости лежат в `requirements-dev.txt` (в `requirements.txt` их нет):
+
 ```bash
-# все тесты
-pytest
+pip install -r requirements-dev.txt
+```
+
+Запуск через `python -m pytest`, а не голый `pytest` — иначе корень проекта не попадает в `sys.path` и тесты падают с `ModuleNotFoundError: No module named 'app'`.
+
+```bash
+# все тесты (кроме интеграционных)
+python -m pytest
 
 # только парсер
-pytest tests/test_parser.py -v
+python -m pytest tests/test_parser.py -v
+
+# интеграционные тесты sandbox (требуют запущенного Docker и собранного образа notebook-grader-sandbox)
+python -m pytest -m integration
 ```
 
 ---
@@ -328,8 +343,10 @@ notebook-grader/
 | `/`                              | вход и регистрация преподавателя                    |
 | `/dashboard`                     | список заданий преподавателя                        |
 | `/assignment/{assignment_id}`    | задачи, шаблон, загрузка работ и сводный отчёт      |
-| `/docs`                          | автогенерируемая документация API (Swagger UI)      |
-| `/redoc`                         | альтернативный просмотр API (ReDoc)                 |
+| `/docs`                          | автогенерируемая документация API (Swagger UI) (только в development) |
+| `/redoc`                         | альтернативный просмотр API (ReDoc) (только в development) |
+| `/healthz`                       | liveness-проба: процесс жив, отвечает на HTTP       |
+| `/readyz`                        | readiness-проба: доступна БД, приложение готово принимать трафик |
 
 ---
 
@@ -356,5 +373,9 @@ notebook-grader/
 ---
 
 ## Развёртывание на сервере
-Для развёртывания на VPS используются скрипты из папки deploy/. 
-Пошаговая инструкция — в deploy/README.md. Целевая среда: Ubuntu LTS, KVM-виртуализация, минимум 4 GB RAM (см. ТЗ п. 4.4.2).
+
+Для развёртывания на VPS используются скрипты из папки `deploy/`. Полная пошаговая инструкция, включая раздел «Известные особенности и подводные камни» (Docker Hub rate limit, настройка override-юнита Caddy, HTTP/3, нюансы pytest и пр.) — в [deploy/README.md](deploy/README.md).
+
+Целевая среда: Ubuntu 24.04 LTS, KVM-виртуализация, 2 vCPU / 4 GB RAM / 20 GB SSD (минимум по ТЗ п. 4.4.2); локация — в России.
+
+Архитектура развёртывания: приложение (uvicorn) и Caddy работают на хосте как systemd-сервисы, PostgreSQL поднимается в Docker через `docker compose`, sandbox-контейнеры приложение запускает само через Docker SDK по `/var/run/docker.sock`.
