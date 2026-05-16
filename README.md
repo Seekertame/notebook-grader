@@ -8,7 +8,11 @@
 
 **Развёрнутая демо-версия:** https://notebook-grader.tw1.ru
 
-Для открытия демо рекомендуется Firefox: в Chromium-based браузерах (Chrome, Yandex, Edge, новые Safari) из РФ-сетей наблюдается TLS-задержка до 10 секунд на первом подключении (подробности — в `deploy/README.md`, раздел «Производительность TLS-handshake в Chromium из РФ»).
+Для открытия демо рекомендуется Firefox. В Chromium-браузерах (Chrome,
+Edge, Yandex Browser) из РФ-сетей первый заход на домен может висеть до
+10 секунд в статусе Stalled. Серверные замеры (`openssl s_client`, `curl`)
+показывают TLS-handshake в пределах 50–200 мс — задержка возникает на
+стороне Chromium. Подробности — в `deploy/README.md`.
 
 ---
 
@@ -286,13 +290,13 @@ alembic downgrade -1
 
 ## Тесты
 
-Pytest и прочие dev-зависимости лежат в `requirements-dev.txt` (в `requirements.txt` их нет):
+Pytest и остальные dev-зависимости лежат в `requirements-dev.txt` (в `requirements.txt` их нет):
 
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-Запуск через `python -m pytest`, а не голый `pytest` — иначе корень проекта не попадает в `sys.path` и тесты падают с `ModuleNotFoundError: No module named 'app'`.
+Запуск через `python -m pytest`, а не `pytest` напрямую — иначе корень проекта не попадает в `sys.path` и тесты падают с `ModuleNotFoundError: No module named 'app'`.
 
 ```bash
 # все тесты (кроме интеграционных)

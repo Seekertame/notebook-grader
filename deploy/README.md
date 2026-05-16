@@ -290,15 +290,15 @@ sudo systemctl start notebook-grader
 
 ## Известные особенности и подводные камни
 
-Собрано по реальному опыту деплоя. Имеет смысл прочитать до того, как
-выполнять соответствующие шаги.
+Проблемы, с которыми столкнулись при первом деплое. Прочитать до
+выполнения соответствующих шагов.
 
 ### Docker Hub pull rate limit
 
 Свежий VPS может попасть в IP-диапазон с исчерпанным анонимным лимитом
-Docker Hub. Симптом — `docker compose up -d db` валится с
-`You have reached your unauthenticated pull rate limit`. Решение —
-добавить зеркало Docker Hub. От root создать `/etc/docker/daemon.json`:
+Docker Hub. Симптом — `docker compose up -d db` падает с
+`You have reached your unauthenticated pull rate limit`. Лечится зеркалом
+Docker Hub. От root создать `/etc/docker/daemon.json`:
 
 ```json
 {
@@ -319,11 +319,11 @@ systemctl restart docker
 
 ### Caddy: настройка override-юнита
 
-При выполнении `systemctl edit caddy` обязательно переопределить
-`ExecStart`, чтобы убрать флаг `--environ` из дефолтного юнита. Иначе при
-каждом старте Caddy печатает все переменные окружения (включая секреты
+При выполнении `systemctl edit caddy` нужно переопределить `ExecStart`,
+чтобы убрать флаг `--environ` из дефолтного юнита. Иначе при каждом
+старте Caddy печатает все переменные окружения (включая
 `NBGRADER_SECRET_KEY` и `POSTGRES_PASSWORD`) в системный журнал, откуда
-их легко прочитать. Содержимое override-файла:
+их можно прочитать. Содержимое override-файла:
 
 ```ini
 [Service]
@@ -333,21 +333,21 @@ ExecStart=/usr/bin/caddy run --config /etc/caddy/Caddyfile
 ```
 
 Пустой `ExecStart=` обязателен — он обнуляет старое значение, иначе
-systemd ругнётся на конфликт.
+systemd выдаст конфликт.
 
-Если до правки уже успели запустить Caddy и секреты попали в журнал —
+Если до правки Caddy уже был запущен и секреты попали в журнал —
 после фикса вычистить журнал:
 
 ```bash
 journalctl --rotate && journalctl --vacuum-time=1s
 ```
 
-Надёжнее — сразу сменить и сами секреты.
+Параллельно — сменить сами секреты.
 
 ### Caddy: права на `/var/log/caddy/access.log`
 
 При первом запуске Caddy может упасть с `permission denied` на
-`access.log`, если файл уже был создан root'ом. Лечится от root:
+`access.log`, если файл уже был создан root'ом. От root:
 
 ```bash
 chown caddy:caddy /var/log/caddy/access.log
@@ -389,23 +389,24 @@ python -m pytest -m integration
 настроен `pyproject.toml`/`conftest.py` для автодобавления корня в
 `sys.path`. Конструкция `python -m` это исправляет.
 
-На скромном VPS (2 vCPU) часть интеграционных тестов (fork-bomb,
-infinite loop) может завершаться
-`requests.exceptions.ConnectionError: Read timed out` — это таймаут
-HTTP-клиента docker-py, а не реальный провал теста: контейнер всё равно
-убивается по `TIMEOUT_SECONDS=30` из `executor.py`. Поведение в
-продакшене корректное — sandbox-контейнер не висит, просто HTTP-клиент
-успевает сдаться раньше.
+На VPS с 2 vCPU часть интеграционных тестов (fork-bomb, infinite loop)
+может завершаться `requests.exceptions.ConnectionError: Read timed out` —
+это таймаут HTTP-клиента docker-py, а не падение теста по существу:
+контейнер всё равно убивается по `TIMEOUT_SECONDS=30` из `executor.py`.
+В продакшене это безопасно — sandbox-контейнер не остаётся живым,
+HTTP-клиент закрывает соединение раньше.
 
-### Производительность TLS-handshake в Chromium из РФ
+### Задержка первого запроса в Chromium-браузерах
 
-На сертификатах Let's Encrypt из российских сетей Chromium-based
-браузеры (Chrome, Yandex, Edge, новые Safari) могут демонстрировать
-Stalled 10 секунд на первом подключении к домену. На Firefox такой
-задержки нет. Замеры на стороне сервера (`openssl s_client`, `curl` с
-сервера) показывают handshake в пределах 50-200 мс, поэтому проблема не
-серверная. Причина предположительно — дополнительные сетевые проверки
-Chromium (CT log validation, CRLSet update от Google), которые из РФ
-доходят медленно или таймаутятся. Лечится на уровне клиента (отключение
-DoH в Chrome, использование Firefox), на стороне сервера эффективного
-фикса не нашли.
+В некоторых Chromium-браузерах из РФ-сетей первый запрос к домену может
+показывать `Stalled ≈ 10s` в DevTools. При этом серверные замеры
+(`curl` с VPS, `curl` к uvicorn, `tcpdump` на сервере) показывают, что
+Caddy, приложение и TLS-handshake на стороне сервера отрабатывают быстро.
+
+Наиболее вероятно, задержка возникает внутри клиентского сетевого стека
+Chromium: proxy auto-detection, DNS/DoH, socket pool, certificate verifier,
+cache/network service или другая клиентская проверка. Точная причина
+подтверждается через `chrome://net-export/`.
+
+Практический обход: использовать Firefox или дождаться первого открытия
+страницы. Серверного исправления, подтверждённого замерами, пока не найдено.
