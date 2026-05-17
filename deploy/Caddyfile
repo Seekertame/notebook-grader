@@ -1,35 +1,46 @@
+{
+    servers {
+        protocols h1
+        timeouts {
+            idle 2m
+        }
+    }
+}
+
 # Домен берётся из DOMAIN (env-файл подключается через override caddy.service).
-
 {$DOMAIN} {
-	# Внешний рубеж лимита загрузок (50 MB в приложении + запас).
-	request_body {
-		max_size 60MB
-	}
+        tls {
+                key_type p256
+        }
+        # Внешний рубеж лимита загрузок (50 MB в приложении + запас).
+        request_body {
+                max_size 60MB
+        }
 
-	encode zstd gzip
+        encode zstd gzip
 
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		-Server
-	}
+        header {
+                Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+                X-Content-Type-Options "nosniff"
+                X-Frame-Options "DENY"
+                Referrer-Policy "strict-origin-when-cross-origin"
+                -Server
+        }
 
-	reverse_proxy 127.0.0.1:8000 {
-		# Запуск sandbox-контейнера может занять до минуты.
-		transport http {
-			read_timeout 120s
-			write_timeout 120s
-		}
-	}
+        reverse_proxy 127.0.0.1:8000 {
+                # Запуск sandbox-контейнера может занять до минуты.
+                transport http {
+                        read_timeout 120s
+                        write_timeout 120s
+                }
+        }
 
-	log {
-		output file /var/log/caddy/access.log {
-			roll_size 10mb
-			roll_keep 5
-			roll_keep_for 720h
-		}
-		format json
-	}
+        log {
+                output file /var/log/caddy/access.log {
+                        roll_size 10mb
+                        roll_keep 5
+                        roll_keep_for 720h
+                }
+                format json
+        }
 }
